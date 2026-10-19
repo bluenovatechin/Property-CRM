@@ -95,6 +95,16 @@ Run the daily jobs on demand (Super Admin): `POST /api/v1/jobs/run`.
 4. **Keeping Render Free Tier Awake**: Render spins down inactive free instances after 15 minutes. The API now includes an automatic keep-alive cron that self-pings `/api/v1/health` every 10 minutes (using Render's `RENDER_EXTERNAL_URL`). For 100% reliability if the instance ever stops or reboots, configure a free monitor like [cron-job.org](https://cron-job.org) or [UptimeRobot](https://uptimerobot.com) to ping `https://<your-render-api>.onrender.com/api/v1/health` every 10–14 minutes.
 5. Optional demo data on Neon: run `npm run db:seed -w apps/api` locally with `DATABASE_URL` set to the Neon string (erases data).
 
+### Reset to an empty system (only the 6 demo logins)
+
+```bash
+npm run db:clean -w apps/api
+```
+
+Erases ALL data in the database that `DATABASE_URL` points to and creates only the six demo logins (password `Password@123`). Every section starts empty; one owner profile (Owner A) and one tenant profile (Customer A) exist so those two logins work. For the full sample data instead, use `npm run db:seed -w apps/api`.
+
+A step-by-step guide for users is in [docs/Property CRM - User Guide.docx](docs/).
+
 ### First login on a new database (no demo data)
 
 Point `DATABASE_URL` in `apps/api/.env` at the database (e.g. Neon), then:
