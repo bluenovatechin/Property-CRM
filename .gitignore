@@ -16,3 +16,7 @@ apps/api/uploads/
 Thumbs.db
 .vscode/*
 !.vscode/extensions.json
+.neon
+
+# Vite temp files
+*.timestamp-*.mjs

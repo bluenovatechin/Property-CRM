@@ -1,0 +1,42 @@
+# Render Blueprint for the API (NestJS). Render → New → Blueprint → pick this repo.
+# You only fill in DATABASE_URL and APP_URL; the JWT secrets are generated for you.
+services:
+  - type: web
+    name: property-crm-api
+    runtime: node
+    plan: free
+    region: singapore
+    # Built from the repo root because this is an npm workspace (apps/api + apps/web).
+    # --include=dev: the build needs the Nest CLI and Prisma, which are dev dependencies.
+    buildCommand: npm ci --include=dev && npm run db:deploy -w apps/api && npm run build -w apps/api
+    startCommand: npm start -w apps/api
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: TZ_NAME
+        value: Asia/Kolkata
+      # Neon → Connect → copy the FULL string with "Connection pooling" OFF
+      - key: DATABASE_URL
+        sync: false
+      # Your Vercel address, e.g. https://property-crm.vercel.app (no slash at the end)
+      - key: APP_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: MAIL_FROM
+        value: Property CRM <no-reply@example.com>
+      # Optional — leave empty and emails are only written to the Render logs
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
