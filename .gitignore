@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+coverage/
+
+# local embedded PostgreSQL data
+apps/api/.pgdata/
+
+# uploaded files in local development
+apps/api/uploads/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json

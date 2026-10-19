@@ -1,0 +1,8 @@
+{
+  "name": "Property CRM — Prototype Finisher",
+  "id": "property-crm-prototype-finisher",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"],
+  "networkAccess": { "allowedDomains": ["none"] }
+}
