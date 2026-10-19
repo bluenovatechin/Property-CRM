@@ -24,7 +24,7 @@ async function main() {
   const password = arg('password') ?? `${randomBytes(6).toString('base64url')}@9Aa`;
 
   if (!email || !name) {
-    console.error('Usage: npm run create-admin -w apps/api -- --email you@company.com --name "Your Name" [--company "Company"] [--password "..."]');
+    console.error('Usage: npm run create-admin -w apps/api -- --email vyom1912@gmail.com --name "Vyom Patel" [--company "BlueNova Technologies"] [--password "YourPass@123"]');
     process.exit(1);
   }
   if (password.length < 8) throw new Error('Password must be at least 8 characters.');
