@@ -13,6 +13,7 @@ export const config = {
   isProd,
   port: Number(process.env.PORT || 3000),
   appUrl: process.env.APP_URL || 'http://localhost:5174',
+  renderExternalUrl: process.env.RENDER_EXTERNAL_URL || process.env.KEEP_ALIVE_URL || '',
   jwtAccessSecret: required('JWT_ACCESS_SECRET', 'dev-access-secret'),
   jwtRefreshSecret: required('JWT_REFRESH_SECRET', 'dev-refresh-secret'),
   accessTtlSeconds: 15 * 60,

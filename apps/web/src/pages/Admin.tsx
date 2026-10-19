@@ -1,12 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Icon } from '../components/Icon';
-import { ErrorNote, Field, Loading, Modal, PageHead, StatusChip, useForm, useToast } from '../components/ui';
+import { ErrorNote, Field, InviteLinkModal, Loading, Modal, PageHead, StatusChip, useForm, useToast } from '../components/ui';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { ago, dateTime, initials, ROLE_LABEL } from '../lib/format';
 import { useOwners, useProperties } from '../lib/queries';
 import type { Role } from '../lib/types';
+
+type Invite = { emailed?: boolean; inviteUrl?: string };
 
 interface UserRow {
   id: string;
@@ -34,12 +36,14 @@ export function UsersPage() {
   const qc = useQueryClient();
   const toast = useToast();
   const [editing, setEditing] = useState<UserRow | 'new' | null>(null);
+  const [link, setLink] = useState<{ url: string; who: string } | null>(null);
   const { data, isLoading, error } = useQuery({ queryKey: ['users'], queryFn: () => api.get<UserRow[]>('/users') });
 
   const resend = async (u: UserRow) => {
     try {
-      await api.post(`/users/${u.id}/resend-invite`);
-      toast(`Invite re-sent to ${u.email}`);
+      const r = await api.post<Invite>(`/users/${u.id}/resend-invite`);
+      if (r.inviteUrl) setLink({ url: r.inviteUrl, who: u.name });
+      else toast(`Invite re-sent to ${u.email}`);
     } catch (e) {
       toast((e as Error).message, true);
     }
@@ -141,12 +145,13 @@ export function UsersPage() {
           <span style={{ fontWeight: 500 }}>Tenant portal only — invited from the tenant's profile</span>
         </div>
       </section>
-      {editing && <UserForm user={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {editing && <UserForm user={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onInviteLink={(url, who) => setLink({ url, who })} />}
+      {link && <InviteLinkModal url={link.url} who={link.who} onClose={() => setLink(null)} />}
     </>
   );
 }
 
-function UserForm({ user, onClose }: { user: UserRow | null; onClose: () => void }) {
+function UserForm({ user, onClose, onInviteLink }: { user: UserRow | null; onClose: () => void; onInviteLink: (url: string, who: string) => void }) {
   const qc = useQueryClient();
   const toast = useToast();
   const properties = useProperties();
@@ -158,8 +163,9 @@ function UserForm({ user, onClose }: { user: UserRow | null; onClose: () => void
       await api.patch(`/users/${user.id}`, { name: v.name, phone: v.phone || null, role: v.role, propertyIds: scoped ? v.propertyIds : [] });
       toast('User updated');
     } else {
-      await api.post('/users', { ...v, phone: v.phone || null, ownerId: v.role === 'OWNER' ? v.ownerId : null, propertyIds: scoped ? v.propertyIds : [] });
-      toast(`Invite emailed to ${v.email}`);
+      const r = await api.post<Invite>('/users', { ...v, phone: v.phone || null, ownerId: v.role === 'OWNER' ? v.ownerId : null, propertyIds: scoped ? v.propertyIds : [] });
+      if (r.inviteUrl) onInviteLink(r.inviteUrl, v.name);
+      else toast(`Invite emailed to ${v.email}`);
     }
     qc.invalidateQueries({ queryKey: ['users'] });
     onClose();

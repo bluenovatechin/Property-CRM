@@ -29,8 +29,32 @@ export class JobsService implements OnApplicationBootstrap {
     try {
       await this.markOverdue();
       await this.leases.expireEnded();
+      if (config.renderExternalUrl) {
+        this.logger.log(`Keep-alive ping configured for ${config.renderExternalUrl} (runs every 10 minutes)`);
+      }
     } catch (e) {
       this.logger.warn(`Start-up check skipped: ${(e as Error).message}`);
+    }
+  }
+
+  /**
+   * Pings public health endpoint every 10 minutes to prevent Render's free tier from sleeping (inactivity timeout is 15m).
+   * Render automatically provides RENDER_EXTERNAL_URL; KEEP_ALIVE_URL can also be set manually in .env.
+   */
+  @Cron('*/10 * * * *')
+  async keepAlive() {
+    const base = config.renderExternalUrl;
+    if (!base) return;
+    try {
+      const pingUrl = `${base.replace(/\/+$/, '')}/api/v1/health`;
+      const res = await fetch(pingUrl);
+      if (res.ok) {
+        this.logger.debug(`Keep-alive ping OK: ${pingUrl}`);
+      } else {
+        this.logger.warn(`Keep-alive ping returned status ${res.status}`);
+      }
+    } catch (err) {
+      this.logger.warn(`Keep-alive ping failed: ${(err as Error).message}`);
     }
   }
 

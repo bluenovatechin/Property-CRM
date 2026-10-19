@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
-import { confirmAction, Empty, ErrorNote, Field, Loading, Modal, PageHead, StatusChip, useForm, useToast } from '../components/ui';
+import { confirmAction, Empty, ErrorNote, Field, InviteLinkModal, Loading, Modal, PageHead, StatusChip, useForm, useToast } from '../components/ui';
 import { api, qs } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { ago, date, initials, inr, label, periodLabel, modeLabel } from '../lib/format';
@@ -157,14 +157,16 @@ export function TenantDetailPage() {
   const toast = useToast();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const { data: t, error } = useQuery({ queryKey: ['tenant', id], queryFn: () => api.get<TenantDetail>(`/tenants/${id}`) });
   if (error) return <ErrorNote error={error} />;
   if (!t) return <Loading />;
 
   const invite = async () => {
     try {
-      await api.post(`/tenants/${t.id}/invite`);
-      toast(`Portal invite emailed to ${t.email}`);
+      const r = await api.post<{ inviteUrl?: string }>(`/tenants/${t.id}/invite`);
+      if (r.inviteUrl) setInviteUrl(r.inviteUrl);
+      else toast(`Portal invite emailed to ${t.email}`);
       qc.invalidateQueries({ queryKey: ['tenant', id] });
     } catch (e) {
       toast((e as Error).message, true);
@@ -406,6 +408,7 @@ export function TenantDetailPage() {
         </div>
       </div>
       {editing && <TenantForm tenant={t} onClose={() => setEditing(false)} />}
+      {inviteUrl && <InviteLinkModal url={inviteUrl} who={t.fullName} onClose={() => setInviteUrl(null)} />}
     </>
   );
 }

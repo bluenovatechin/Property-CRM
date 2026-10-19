@@ -90,9 +90,9 @@ export class UsersService {
           : undefined,
       },
     });
-    await this.auth.sendInvite(user);
+    const invite = await this.auth.sendInvite(user);
     await this.activity.log(u, u.companyId, { entityType: 'USER', entityId: user.id, action: 'create', summary: `Invited ${user.name} as ${user.role}` });
-    return { id: user.id };
+    return { id: user.id, ...invite };
   }
 
   async update(u: AuthUser, id: string, body: unknown) {
@@ -121,8 +121,7 @@ export class UsersService {
     const user = await this.prisma.user.findFirst({ where: { id, companyId: u.companyId, deletedAt: null } });
     if (!user) throw new NotFound('User');
     if (user.status !== 'INVITED') throw new BusinessError('ALREADY_ACTIVE', 'This user has already set a password.');
-    await this.auth.sendInvite(user);
-    return { ok: true };
+    return { ok: true, ...(await this.auth.sendInvite(user)) };
   }
 }
 

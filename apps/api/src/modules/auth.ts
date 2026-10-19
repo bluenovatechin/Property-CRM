@@ -129,11 +129,15 @@ export class AuthService {
     return raw;
   }
 
-  async sendInvite(user: Pick<User, 'id' | 'email' | 'name' | 'role'>) {
+  /**
+   * Emails a set-password link. When no email service is configured (SMTP_HOST empty),
+   * the link is returned instead so the inviter can share it by WhatsApp/SMS.
+   */
+  async sendInvite(user: Pick<User, 'id' | 'email' | 'name' | 'role'>): Promise<{ emailed: boolean; inviteUrl?: string }> {
     const token = await this.createToken(user.id, 'INVITE');
     const url = `${config.appUrl}/accept-invite?token=${token}`;
     const tenant = user.role === 'TENANT';
-    await this.mail.send({
+    const sent = await this.mail.send({
       to: user.email,
       subject: tenant ? 'Your tenant portal is ready' : 'You have been invited to Property CRM',
       heading: tenant ? `Welcome, ${user.name}` : `Hello ${user.name}`,
@@ -142,6 +146,8 @@ export class AuthService {
         : ['An account has been created for you in Property CRM.', 'Set your password to sign in. The link is valid for 48 hours.'],
       action: { label: 'Set my password', url },
     });
+    const emailed = !!config.smtp.host && sent;
+    return emailed ? { emailed } : { emailed, inviteUrl: url };
   }
 
   private async consumeToken(raw: string, type: TokenType) {

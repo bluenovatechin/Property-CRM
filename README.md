@@ -92,7 +92,24 @@ Run the daily jobs on demand (Super Admin): `POST /api/v1/jobs/run`.
 1. **Database — Neon**: Connect → turn **Connection pooling off** → copy the full `postgresql://…?sslmode=require` string.
 2. **API — Render**: New → **Blueprint** → this repo. `render.yaml` sets the build/start commands and generates the JWT secrets; you paste only `DATABASE_URL` (Neon) and `APP_URL` (your Vercel address).
 3. **Web — Vercel**: put your Render address in `apps/web/vercel.json`, push, then import the repo with Root Directory `apps/web`. Vercel forwards `/api/*` to Render, so the login cookie stays first-party.
-4. Optional demo data on Neon: run `npm run db:seed -w apps/api` locally with `DATABASE_URL` set to the Neon string (erases data).
+4. **Keeping Render Free Tier Awake**: Render spins down inactive free instances after 15 minutes. The API now includes an automatic keep-alive cron that self-pings `/api/v1/health` every 10 minutes (using Render's `RENDER_EXTERNAL_URL`). For 100% reliability if the instance ever stops or reboots, configure a free monitor like [cron-job.org](https://cron-job.org) or [UptimeRobot](https://uptimerobot.com) to ping `https://<your-render-api>.onrender.com/api/v1/health` every 10–14 minutes.
+5. Optional demo data on Neon: run `npm run db:seed -w apps/api` locally with `DATABASE_URL` set to the Neon string (erases data).
+
+### First login on a new database (no demo data)
+
+Point `DATABASE_URL` in `apps/api/.env` at the database (e.g. Neon), then:
+
+```bash
+npx tsx apps/api/scripts/create-admin.ts --email you@company.com --name "Your Name" --company "BlueNova Properties" --password "YourPass@123"
+```
+
+It only adds a company + Super Admin and never deletes data. Sign in with that email on the website.
+
+### Giving people access
+
+- **Staff / Finance / Owners:** Users & roles → Invite user → pick role (and properties, or the owner profile).
+- **Tenants:** add the tenant (with email) → create their lease and tick "Email a tenant portal invite", or open the tenant → Send portal invite.
+- No email service configured (`SMTP_HOST` empty)? The app shows the invite link instead — copy it or share it on WhatsApp. The link works once and expires in 48 hours.
 
 GitHub Pages can host only the web part and breaks login cookies across domains — use Vercel.
 

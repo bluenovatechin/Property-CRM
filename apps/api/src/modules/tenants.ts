@@ -185,9 +185,9 @@ export class TenantsService {
     } else if (user.email !== tenant.email) {
       user = await this.prisma.user.update({ where: { id: user.id }, data: { email: tenant.email } });
     }
-    await this.auth.sendInvite(user);
+    const invite = await this.auth.sendInvite(user);
     await this.activity.log(u, u.companyId, { entityType: 'TENANT', entityId: tenant.id, action: 'portal_invite', summary: `Sent tenant portal invite to ${tenant.email}` });
-    return { ok: true };
+    return { ok: true, ...invite };
   }
 }
 

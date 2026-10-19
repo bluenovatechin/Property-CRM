@@ -215,6 +215,44 @@ export function useToast() {
   return useContext(ToastContext);
 }
 
+/**
+ * Shown when an invite could not be emailed (no email service set up yet):
+ * the person who invited copies the link and sends it on WhatsApp / SMS.
+ */
+export function InviteLinkModal({ url, who, onClose }: { url: string; who: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const message = `Hello ${who}, your Property CRM account is ready. Set your password here (valid for 48 hours): ${url}`;
+  return (
+    <Modal
+      title="Share the invite link"
+      onClose={onClose}
+      footer={
+        <>
+          <a className="btn" href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer">
+            Share on WhatsApp
+          </a>
+          <button
+            className="btn primary"
+            onClick={async () => {
+              await navigator.clipboard.writeText(url).catch(() => undefined);
+              setCopied(true);
+            }}
+          >
+            {copied ? 'Copied ✓' : 'Copy link'}
+          </button>
+        </>
+      }
+    >
+      <div className="stack">
+        <div className="alert warn small">
+          Email is not set up yet, so no email was sent. Send this link to <b>{who}</b> yourself. It works once and expires in 48 hours.
+        </div>
+        <input className="input" readOnly value={url} onFocus={(e) => e.target.select()} aria-label="Invite link" />
+      </div>
+    </Modal>
+  );
+}
+
 /** Confirmation before destructive actions (SRS FR-LOG-3). */
 export function confirmAction(message: string): boolean {
   return window.confirm(message);

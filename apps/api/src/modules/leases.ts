@@ -107,14 +107,15 @@ export class LeasesService {
     });
     await this.activity.log(u, u.companyId, { entityType: 'LEASE', entityId: lease.id, action: 'create', summary: `Created lease for unit ${unit.unitNo}` });
     if (data.activate) await this.activate(u, lease.id);
+    let inviteUrl: string | undefined;
     if (data.invitePortal) {
       try {
-        await this.tenants.invite(u, data.tenantId);
+        inviteUrl = (await this.tenants.invite(u, data.tenantId)).inviteUrl;
       } catch (e) {
         this.logger.warn(`Lease saved but portal invite failed: ${(e as Error).message}`);
       }
     }
-    return this.get(u, lease.id);
+    return { ...(await this.get(u, lease.id)), inviteUrl };
   }
 
   /** Draft → Active: unit becomes Occupied and the tenant Active (SRS FR-LEASE-3). */

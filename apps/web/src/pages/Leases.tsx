@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
-import { Chip, confirmAction, Empty, ErrorNote, Field, Loading, Modal, PageHead, StatusChip, useForm, useToast } from '../components/ui';
+import { Chip, confirmAction, Empty, ErrorNote, Field, InviteLinkModal, Loading, Modal, PageHead, StatusChip, useForm, useToast } from '../components/ui';
 import { api, qs } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { date, inr, todayISO } from '../lib/format';
@@ -159,6 +159,7 @@ export function NewLeasePage() {
   const [params] = useSearchParams();
   const [step, setStep] = useState(1);
   const [addingTenant, setAddingTenant] = useState(false);
+  const [invite, setInvite] = useState<{ url: string; who: string; leaseId: string } | null>(null);
   const properties = useProperties();
   const start = todayISO();
   const f = useForm({
@@ -199,7 +200,7 @@ export function NewLeasePage() {
   const stepOk = [true, !!(v.unitId && v.tenantId), !!(v.startDate && v.endDate && Number(v.monthlyRent) > 0), true, true];
   const save = (activate: boolean) =>
     f.submit(async (val) => {
-      const lease = await api.post<Lease>('/leases', {
+      const lease = await api.post<Lease & { inviteUrl?: string }>('/leases', {
         unitId: val.unitId,
         tenantId: val.tenantId,
         startDate: val.startDate,
@@ -215,7 +216,8 @@ export function NewLeasePage() {
       });
       qc.invalidateQueries();
       toast(activate ? `Lease activated · unit ${lease.unit.unitNo} is now Occupied` : 'Lease saved as draft');
-      navigate(`/leases/${lease.id}`);
+      if (lease.inviteUrl) setInvite({ url: lease.inviteUrl, who: lease.tenant.fullName, leaseId: lease.id });
+      else navigate(`/leases/${lease.id}`);
     })();
 
   const STEPS = ['Unit and tenant', 'Terms', 'Tenant access', 'Review'];
@@ -431,6 +433,7 @@ export function NewLeasePage() {
           </div>
         </aside>
       </div>
+      {invite && <InviteLinkModal url={invite.url} who={invite.who} onClose={() => navigate(`/leases/${invite.leaseId}`)} />}
       {addingTenant && (
         <TenantForm
           onClose={() => setAddingTenant(false)}
