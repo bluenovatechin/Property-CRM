@@ -81,13 +81,13 @@ export function LoginPage() {
         <button className="btn primary" disabled={f.busy} style={{ minHeight: 48 }}>
           {f.busy ? 'Signing in…' : 'Sign in'}
         </button>
-        {import.meta.env.DEV && (
+       
           <div className="alert info small">
             <div>
               <b>Demo accounts</b> (password <code>Password@123</code>): admin@demo.test · manager@demo.test · finance@demo.test · staff1@demo.test · owner.a@demo.test · customer.a@demo.test (tenant)
             </div>
           </div>
-        )}
+        
       </form>
     </AuthShell>
   );
