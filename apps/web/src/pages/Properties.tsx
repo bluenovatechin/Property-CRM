@@ -1,26 +1,30 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Chip, Empty, ErrorNote, Field, Loading, Modal, PageHead, useForm, useToast } from '../components/ui';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { initials, inr, inrShort, label } from '../lib/format';
+import { initials, inrShort, label } from '../lib/format';
 import { useOwners, useProperties } from '../lib/queries';
-import type { Owner, Property } from '../lib/types';
+import type { Property } from '../lib/types';
 
 const TYPES = ['RESIDENTIAL', 'COMMERCIAL', 'OFFICE', 'SHOP', 'WAREHOUSE', 'MIXED'];
 const TILE_TONES = ['var(--primary-soft)', 'var(--info-soft)', 'var(--accent-soft)', 'var(--success-soft)'];
 
 export function PropertiesPage() {
-  const { can } = useAuth();
+  const { can, me } = useAuth();
+  const [params, setParams] = useSearchParams();
   const { data, isLoading, error } = useProperties();
   const owners = useOwners(can('owners:read'));
   const [q, setQ] = useState('');
   const [type, setType] = useState('');
   const [ownerId, setOwnerId] = useState('');
-  const [editing, setEditing] = useState<Property | 'new' | null>(null);
-  const [ownerEditing, setOwnerEditing] = useState<boolean>(false);
+  const [editing, setEditing] = useState<Property | 'new' | null>(params.get('new') === '1' ? 'new' : null);
+  const closeForm = () => {
+    setEditing(null);
+    if (params.get('new')) setParams({}, { replace: true });
+  };
 
   const list = useMemo(
     () =>
@@ -34,8 +38,12 @@ export function PropertiesPage() {
   return (
     <>
       <PageHead
-        eyebrow="Portfolio"
-        title="Properties"
+        title={me?.role === 'OWNER' ? 'My properties' : 'Properties'}
+        hint={
+          me?.role === 'OWNER'
+            ? 'Your buildings and shops. Open one to see every unit, add units, and create agreements.'
+            : 'All buildings and shops, by owner. Open one to see every unit and its status.'
+        }
         actions={
           can('properties:write') && (
             <button className="btn primary" onClick={() => setEditing('new')}>
@@ -147,55 +155,14 @@ export function PropertiesPage() {
         </section>
       )}
 
-      {owners.data && (
-        <section className="card">
-          <div className="card-head">
-            <div>
-              <h2>Owners</h2>
-              <div className="muted small">Each property has exactly one owner; an owner can hold many properties.</div>
-            </div>
-            {can('owners:write') && (
-              <button className="btn sm" onClick={() => setOwnerEditing(true)}>
-                <Icon name="plus" size={16} /> Add owner
-              </button>
-            )}
-          </div>
-          <div style={{ padding: '0 22px 8px' }}>
-            {owners.data.map((o) => (
-              <OwnerRow key={o.id} o={o} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {editing && <PropertyForm property={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
-      {ownerEditing && <OwnerForm onClose={() => setOwnerEditing(false)} />}
+      {editing && <PropertyForm property={editing === 'new' ? null : editing} defaultOwnerId={params.get('owner') ?? undefined} onClose={closeForm} />}
     </>
   );
 }
 
-function OwnerRow({ o }: { o: Owner }) {
-  return (
-    <div className="list-item" style={{ flexWrap: 'wrap' }}>
-      <span className="avatar neutral">{initials(o.name)}</span>
-      <div style={{ flex: '1 1 220px' }}>
-        <b>{o.name}</b>
-        <div className="muted small">
-          {o.properties.map((p) => p.name).join(', ') || 'No properties yet'} · {o.phone}
-        </div>
-      </div>
-      <div style={{ flex: '0 1 170px' }}>
-        <div className="muted small">Collected this month</div>
-        <b>{inr(o.collectedThisMonth)}</b>
-      </div>
-      <Link className="btn sm" to="/reports?r=owner-statement">
-        Owner statement
-      </Link>
-    </div>
-  );
-}
-
-export function PropertyForm({ property, onClose }: { property: Property | null; onClose: () => void }) {
+export function PropertyForm({ property, onClose, defaultOwnerId }: { property: Property | null; onClose: () => void; defaultOwnerId?: string }) {
+  const { me, can } = useAuth();
+  const isOwner = me?.role === 'OWNER';
   const qc = useQueryClient();
   const toast = useToast();
   const navigate = useNavigate();
@@ -211,7 +178,7 @@ export function PropertyForm({ property, onClose }: { property: Property | null;
     city: property?.city ?? '',
     state: property?.state ?? 'Gujarat',
     pincode: property?.pincode ?? '',
-    ownerId: property?.ownerId ?? '',
+    ownerId: property?.ownerId ?? defaultOwnerId ?? (isOwner ? me?.owner?.id ?? '' : ''),
     status: property?.status ?? 'ACTIVE',
     notes: property?.notes ?? '',
     ownerName: '',
@@ -237,6 +204,7 @@ export function PropertyForm({ property, onClose }: { property: Property | null;
       navigate(`/properties/${created.id}?addUnits=1`);
     }
     qc.invalidateQueries({ queryKey: ['properties'] });
+    qc.invalidateQueries({ queryKey: ['setup'] });
     qc.invalidateQueries({ queryKey: ['property'] });
     onClose();
   });
@@ -304,7 +272,7 @@ export function PropertyForm({ property, onClose }: { property: Property | null;
             <input {...f.bind('pincode')} inputMode="numeric" maxLength={6} />
           </Field>
         </div>
-        {newOwner ? (
+        {isOwner ? null : newOwner ? (
           <div className="card card-pad stack" style={{ background: 'var(--surface-2)', border: 0 }}>
             <div className="row between">
               <b>New owner</b>
@@ -322,7 +290,7 @@ export function PropertyForm({ property, onClose }: { property: Property | null;
             </div>
           </div>
         ) : (
-          <Field label="Owner" error={f.errors.ownerId} hint={<button type="button" className="btn ghost sm" style={{ padding: 0, minHeight: 0 }} onClick={() => setNewOwner(true)}>+ Add a new owner</button>}>
+          <Field label="Owner" error={f.errors.ownerId} hint={can('owners:write') ? <button type="button" className="btn ghost sm" style={{ padding: 0, minHeight: 0 }} onClick={() => setNewOwner(true)}>+ Add a new owner</button> : undefined}>
             <select {...f.bind('ownerId')}>
               <option value="">Choose the owner…</option>
               {owners.data?.map((o) => (
@@ -336,65 +304,6 @@ export function PropertyForm({ property, onClose }: { property: Property | null;
         <Field label="Notes" error={f.errors.notes}>
           <textarea {...f.bind('notes')} rows={2} />
         </Field>
-      </form>
-    </Modal>
-  );
-}
-
-function OwnerForm({ onClose }: { onClose: () => void }) {
-  const qc = useQueryClient();
-  const toast = useToast();
-  const f = useForm({ name: '', phone: '', email: '', pan: '', address: '', bankAccount: '', ifsc: '' });
-  const save = f.submit(async (v) => {
-    await api.post('/owners', v);
-    qc.invalidateQueries({ queryKey: ['owners'] });
-    toast('Owner added');
-    onClose();
-  });
-  return (
-    <Modal
-      title="Add owner"
-      onClose={onClose}
-      footer={
-        <>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn primary" onClick={() => save()} disabled={f.busy}>
-            Save owner
-          </button>
-        </>
-      }
-    >
-      <form className="form" onSubmit={save} noValidate>
-        <ErrorNote error={f.formError} />
-        <div className="form-row">
-          <Field label="Name" error={f.errors.name}>
-            <input {...f.bind('name')} autoFocus />
-          </Field>
-          <Field label="Mobile" error={f.errors.phone}>
-            <input {...f.bind('phone')} inputMode="numeric" maxLength={10} />
-          </Field>
-        </div>
-        <div className="form-row">
-          <Field label="Email" error={f.errors.email}>
-            <input type="email" {...f.bind('email')} />
-          </Field>
-          <Field label="PAN" error={f.errors.pan}>
-            <input {...f.bind('pan')} style={{ textTransform: 'uppercase' }} maxLength={10} />
-          </Field>
-        </div>
-        <Field label="Address" error={f.errors.address}>
-          <input {...f.bind('address')} />
-        </Field>
-        <div className="form-row">
-          <Field label="Bank account" error={f.errors.bankAccount} hint="Shown masked to everyone except Super Admin and the owner">
-            <input {...f.bind('bankAccount')} inputMode="numeric" />
-          </Field>
-          <Field label="IFSC" error={f.errors.ifsc}>
-            <input {...f.bind('ifsc')} style={{ textTransform: 'uppercase' }} />
-          </Field>
-        </div>
       </form>
     </Modal>
   );

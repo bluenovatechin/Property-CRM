@@ -14,7 +14,7 @@ export function TenantsPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [q, setQ] = useState('');
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(params.get('new') === '1');
   const status = params.get('status') ?? '';
   const propertyId = params.get('property') ?? '';
   const properties = useProperties();
@@ -33,8 +33,8 @@ export function TenantsPage() {
   return (
     <>
       <PageHead
-        eyebrow="People"
         title="Tenants"
+        hint="People who rent your units. Add a tenant first, then create their rent agreement. Click a name to see their rent and requests."
         actions={
           can('tenants:write') && (
             <button className="btn primary" onClick={() => setAdding(true)}>

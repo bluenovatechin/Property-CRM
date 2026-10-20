@@ -76,7 +76,8 @@ export function RentPage() {
     <>
       <PageHead
         eyebrow={`${propertyId ? properties.data?.find((p) => p.id === propertyId)?.name ?? '' : 'All properties'} · ${periodLabel(period)}`}
-        title="Monthly rent"
+        title="Rent"
+        hint="Each month: click “Pre-fill from leases”, then press “Mark paid” when a tenant pays. Unpaid rent turns Overdue after its due date."
         actions={
           <>
             {can('rent:write') && (

@@ -20,3 +20,6 @@ Thumbs.db
 
 # Vite temp files
 *.timestamp-*.mjs
+
+# Word lock files (a document is open)
+~$*

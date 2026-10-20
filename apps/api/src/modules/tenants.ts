@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Injectable, Param, Patch, Post, Query } 
 import { Prisma, TenantStatus } from '@prisma/client';
 import { z } from 'zod';
 import { ActivityService } from '../common/activity.service';
-import { AuthUser, Can, CurrentUser } from '../common/auth';
+import { AuthUser, Can, CurrentUser, ownerScopeOf } from '../common/auth';
 import { BusinessError, NotFound } from '../common/errors';
 import { ScopeService } from '../common/scope.service';
 import { isoDate, mask, num } from '../common/util';
@@ -139,7 +139,7 @@ export class TenantsService {
     const data = parse(tenantSchema, body);
     const dup = await this.prisma.tenant.findFirst({ where: { companyId: u.companyId, phone: data.phone, deletedAt: null } });
     if (dup) throw new BusinessError('DUPLICATE_PHONE', `${dup.fullName} already uses this mobile number.`);
-    const tenant = await this.prisma.tenant.create({ data: { ...data, companyId: u.companyId, status: 'INACTIVE' } });
+    const tenant = await this.prisma.tenant.create({ data: { ...data, companyId: u.companyId, status: 'INACTIVE', ownerId: ownerScopeOf(u) } });
     await this.activity.log(u, u.companyId, { entityType: 'TENANT', entityId: tenant.id, action: 'create', summary: `Added tenant ${tenant.fullName}` });
     return tenant;
   }

@@ -2,7 +2,9 @@ import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Empty } from './components/ui';
 import { homeFor, RequireAuth, useAuth } from './lib/auth';
-import { ActivityPage, UsersPage } from './pages/Admin';
+import { ActivityPage } from './pages/Admin';
+import { OwnersPage } from './pages/Owners';
+import { PeoplePage } from './pages/People';
 import { ForgotPasswordPage, LoginPage, SetPasswordPage } from './pages/AuthPages';
 import { DashboardPage } from './pages/Dashboard';
 import { ExpensesPage } from './pages/Expenses';
@@ -68,7 +70,8 @@ export default function App() {
         <Route path="maintenance" element={<RequireAuth area="app" permission="maintenance:read"><MaintenancePage /></RequireAuth>} />
         <Route path="expenses" element={<RequireAuth area="app" permission="expenses:read"><ExpensesPage /></RequireAuth>} />
         <Route path="reports" element={<RequireAuth area="app" permission="reports:read"><ReportsPage /></RequireAuth>} />
-        <Route path="users" element={<RequireAuth area="app" permission="users:manage"><UsersPage /></RequireAuth>} />
+        <Route path="owners" element={<RequireAuth area="app" permission="owners:write"><OwnersPage /></RequireAuth>} />
+        <Route path="users" element={<RequireAuth area="app" permission="team:manage"><PeoplePage /></RequireAuth>} />
         <Route path="activity" element={<RequireAuth area="app" permission="activity:read"><ActivityPage /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Route>

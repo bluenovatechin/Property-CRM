@@ -15,6 +15,7 @@ export interface Me {
   propertyIds: string[];
   tenant: { id: string; fullName: string } | null;
   owner: { id: string; name: string } | null;
+  teamOwner: { id: string; name: string } | null;
 }
 
 export interface Ref {
@@ -72,6 +73,9 @@ export interface Owner {
   email: string | null;
   properties: Ref[];
   hasLogin: boolean;
+  login: 'ACTIVE' | 'INVITED' | 'DISABLED' | null;
+  teamCount: number;
+  tenantCount: number;
   collectedThisMonth: number;
 }
 

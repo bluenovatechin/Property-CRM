@@ -56,6 +56,7 @@ export function ExpensesPage() {
       <PageHead
         eyebrow={periodLabel(period)}
         title="Expenses"
+        hint="Money spent on a property: electricity, salaries, vendors. Repair costs are added here automatically when a repair is closed."
         actions={
           can('expenses:write') && (
             <button className="btn primary" onClick={() => setAdding(true)}>

@@ -127,7 +127,7 @@ export class LeasesService {
       if (other) throw new BusinessError('UNIT_ALREADY_OCCUPIED', `Unit ${lease.unit.unitNo} already has an active lease.`);
       await tx.lease.update({ where: { id }, data: { status: 'ACTIVE' } });
       await tx.unit.update({ where: { id: lease.unitId }, data: { status: 'OCCUPIED', vacantSince: null } });
-      await tx.tenant.update({ where: { id: lease.tenantId }, data: { status: 'ACTIVE' } });
+      await tx.tenant.update({ where: { id: lease.tenantId }, data: { status: 'ACTIVE', ownerId: lease.unit.property.ownerId } });
       await this.activity.log(u, u.companyId, { entityType: 'LEASE', entityId: id, action: 'activate', summary: `Lease activated · unit ${lease.unit.unitNo} is now Occupied by ${lease.tenant.fullName}` }, tx);
       await this.activity.log(u, u.companyId, { entityType: 'UNIT', entityId: lease.unitId, action: 'occupied', summary: `Status changed to Occupied (${lease.tenant.fullName})` }, tx);
     });

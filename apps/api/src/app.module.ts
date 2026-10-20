@@ -12,7 +12,7 @@ import { ExpensesController, ExpensesService } from './modules/expenses';
 import { JobsController, JobsService } from './modules/jobs';
 import { LeasesController, LeasesService } from './modules/leases';
 import { MaintenanceController, MaintenanceService } from './modules/maintenance';
-import { ActivityController, NotificationsController, SearchController } from './modules/misc';
+import { ActivityController, NotificationsController, SearchController, SetupController } from './modules/misc';
 import { OwnersController, OwnersService } from './modules/owners';
 import { PortalController, PortalService } from './modules/portal';
 import { PropertiesController, PropertiesService } from './modules/properties';
@@ -53,6 +53,7 @@ class HealthController {
     NotificationsController,
     SearchController,
     ActivityController,
+    SetupController,
     PortalController,
     JobsController,
   ],

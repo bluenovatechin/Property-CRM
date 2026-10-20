@@ -62,6 +62,14 @@ async function wipe() {
 }
 
 async function main() {
+  // Safety: this fills the database with ~200 sample tenants. Never run it on the live database by accident.
+  const host = (process.env.DATABASE_URL ?? '').split('@')[1]?.split('/')[0] ?? '';
+  if (!/^(localhost|127\.0\.0\.1)/.test(host) && process.env.ALLOW_SAMPLE_DATA !== 'yes') {
+    console.error(`Refusing to load sample data into ${host}. This is not a local database.`);
+    console.error('For a clean live database use: npm run db:clean -w apps/api');
+    console.error('If you really want sample data there, run again with ALLOW_SAMPLE_DATA=yes');
+    process.exit(1);
+  }
   console.log(`Seeding demo data relative to ${todayIso}…`);
   await wipe();
   const hash = await bcrypt.hash(PASSWORD, 10);

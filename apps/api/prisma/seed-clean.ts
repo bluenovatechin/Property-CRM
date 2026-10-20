@@ -4,6 +4,7 @@
  *
  * owner.a and customer.a each need a profile to sign in, so exactly one Owner ("Owner A")
  * and one Tenant ("Customer A", no lease yet) are created and linked to those logins.
+ * finance@ and staff1@ are Owner A's finance person and staff (they see Owner A's properties).
  *
  * Run: npm run db:clean -w apps/api      (uses DATABASE_URL from apps/api/.env)
  */
@@ -48,13 +49,15 @@ async function main() {
   const hash = await bcrypt.hash(PASSWORD, 10);
   const company = await prisma.company.create({ data: { name: 'BlueNova Properties' } });
   const ownerA = await prisma.owner.create({ data: { companyId: company.id, name: 'Owner A', phone: '9876500001', email: 'owner.a@demo.test' } });
-  const customerA = await prisma.tenant.create({ data: { companyId: company.id, fullName: 'Customer A', phone: '9876500101', email: 'customer.a@demo.test', status: 'INACTIVE' } });
+  // Customer A is Owner A's tenant (no lease yet — Owner A creates it).
+  const customerA = await prisma.tenant.create({ data: { companyId: company.id, fullName: 'Customer A', phone: '9876500101', email: 'customer.a@demo.test', status: 'INACTIVE', ownerId: ownerA.id } });
 
-  const users: { email: string; name: string; role: Role; ownerId?: string; tenantId?: string }[] = [
+  // Finance User and Staff 1 work for Owner A, so they see only Owner A's properties.
+  const users: { email: string; name: string; role: Role; ownerId?: string; tenantId?: string; teamOwnerId?: string }[] = [
     { email: 'admin@demo.test', name: 'Super Admin', role: 'SUPER_ADMIN' },
     { email: 'manager@demo.test', name: 'Property Manager', role: 'MANAGER' },
-    { email: 'finance@demo.test', name: 'Finance User', role: 'FINANCE' },
-    { email: 'staff1@demo.test', name: 'Staff 1', role: 'STAFF' },
+    { email: 'finance@demo.test', name: 'Finance User', role: 'FINANCE', teamOwnerId: ownerA.id },
+    { email: 'staff1@demo.test', name: 'Staff 1', role: 'STAFF', teamOwnerId: ownerA.id },
     { email: 'owner.a@demo.test', name: 'Owner A', role: 'OWNER', ownerId: ownerA.id },
     { email: 'customer.a@demo.test', name: 'Customer A', role: 'TENANT', tenantId: customerA.id },
   ];

@@ -1,14 +1,14 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
-import type { AuthUser } from './auth';
+import { AuthUser, ownerScopeOf } from './auth';
 import { NotFound } from './errors';
 
 /**
- * Decides WHICH records a user may see (SRS 2.2, "Scope of data"):
- *  - Super Admin: the whole company
- *  - Manager / Finance / Staff: properties they are assigned to
- *  - Owner: properties they own
+ * Decides WHICH records a user may see:
+ *  - Super Admin, Manager: the whole company (the manager looks after all owners)
+ *  - Owner: their own properties
+ *  - Owner's finance / staff: that owner's properties (+ any property the company assigned to them)
  *  - Tenant: only through /portal endpoints
  */
 @Injectable()
@@ -19,13 +19,16 @@ export class ScopeService {
     const base: Prisma.PropertyWhereInput = { companyId: u.companyId, deletedAt: null };
     switch (u.role) {
       case 'SUPER_ADMIN':
+      case 'MANAGER':
         return base;
       case 'OWNER':
         return { ...base, ownerId: u.ownerId ?? '__none__' };
-      case 'MANAGER':
       case 'FINANCE':
-      case 'STAFF':
-        return { ...base, id: { in: u.propertyIds } };
+      case 'STAFF': {
+        const or: Prisma.PropertyWhereInput[] = [{ id: { in: u.propertyIds } }];
+        if (u.teamOwnerId) or.push({ ownerId: u.teamOwnerId });
+        return { ...base, OR: or };
+      }
       default:
         return { id: '__none__' };
     }
@@ -55,12 +58,13 @@ export class ScopeService {
 
   tenantWhere(u: AuthUser): Prisma.TenantWhereInput {
     const base: Prisma.TenantWhereInput = { companyId: u.companyId, deletedAt: null };
-    if (u.role === 'SUPER_ADMIN') return base;
-    if (u.role === 'MANAGER' || u.role === 'FINANCE') {
-      // Tenants without any lease yet stay visible so a manager can create their first lease.
-      return { ...base, OR: [{ leases: { none: {} } }, { leases: { some: { unit: { propertyId: { in: u.propertyIds } } } } }] };
+    if (u.role === 'SUPER_ADMIN' || u.role === 'MANAGER') return base;
+    const ownerId = ownerScopeOf(u);
+    if (u.role === 'OWNER' || u.role === 'FINANCE') {
+      const or: Prisma.TenantWhereInput[] = [{ leases: { some: { unit: { propertyId: { in: u.propertyIds } } } } }];
+      if (ownerId) or.push({ ownerId }, { leases: { some: { unit: { property: { ownerId } } } } });
+      return { ...base, OR: or };
     }
-    if (u.role === 'OWNER') return { ...base, leases: { some: { unit: { property: { ownerId: u.ownerId ?? '__none__' } } } } };
     return { id: '__none__' };
   }
 

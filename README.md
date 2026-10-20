@@ -39,11 +39,11 @@ Open **http://localhost:5174**. The web dev server forwards `/api` to the API, s
 | Email | Role | What to try |
 | --- | --- | --- |
 | admin@demo.test | Super Admin | Users & roles, activity log, everything |
-| manager@demo.test | Property Manager | Dashboard, unit grid, leases, rent, maintenance |
-| finance@demo.test | Finance | Rent, expenses, reports (no maintenance writes) |
-| staff1@demo.test | Maintenance Staff | Only tickets assigned to them |
-| owner.a@demo.test | Owner | Own 2 properties; can enter monthly rent |
-| customer.a@demo.test | Tenant | Mobile tenant portal (lease, rent, requests) |
+| manager@demo.test | Property Manager | Looks after all owners: adds owners and gives them a login, sees every property |
+| finance@demo.test | Finance | Owner A's finance person: rent, expenses, reports for Owner A's properties |
+| staff1@demo.test | Maintenance Staff | Owner A's staff: only repair tickets assigned to them |
+| owner.a@demo.test | Owner | Adds their own properties, units, tenants, agreements, rent and their team (staff + finance) |
+| customer.a@demo.test | Tenant | Owner A's tenant: mobile tenant portal (lease, rent, requests) |
 
 Demo data: Sunrise Residency (100 flats, the brief's §8 example), Green Park (80 flats), City Mall (60 shops), ~200 tenants and leases, 4 months of rent, 19 tickets. All dates are relative to today, so overdue rent and expiring leases always look current. `npm run db:setup` again resets everything.
 

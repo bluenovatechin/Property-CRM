@@ -38,8 +38,8 @@ export function ReportsPage() {
   return (
     <>
       <PageHead
-        eyebrow="Insights"
         title="Reports"
+        hint="Pick a question on the left. Every report can be downloaded for Excel."
         actions={
           <>
             <label className="select-inline">

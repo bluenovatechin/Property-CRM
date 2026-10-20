@@ -2,11 +2,12 @@ import { Body, Controller, Delete, Get, Injectable, Param, Patch, Post } from '@
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { ActivityService } from '../common/activity.service';
-import { AuthUser, Can, CurrentUser } from '../common/auth';
+import { AuthUser, Can, CurrentUser, ownerScopeOf } from '../common/auth';
 import { BusinessError, NotFound } from '../common/errors';
 import { currentPeriod, mask, num } from '../common/util';
 import { parse, zOptText, zPhone } from '../common/validation';
 import { PrismaService } from '../prisma.service';
+import { AuthService } from './auth';
 
 const ownerSchema = z.object({
   name: z.string().trim().min(2, 'Enter the owner name'),
@@ -24,14 +25,14 @@ export class OwnersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
+    private readonly auth: AuthService,
   ) {}
 
   private where(u: AuthUser): Prisma.OwnerWhereInput {
     const base: Prisma.OwnerWhereInput = { companyId: u.companyId, deletedAt: null };
-    if (u.role === 'OWNER') return { ...base, id: u.ownerId ?? '__none__' };
-    if (u.role === 'SUPER_ADMIN') return base;
-    // Managers and finance see owners of their properties, plus owners with no property yet.
-    return { ...base, OR: [{ properties: { none: {} } }, { properties: { some: { id: { in: u.propertyIds } } } }] };
+    if (u.role === 'SUPER_ADMIN' || u.role === 'MANAGER') return base;
+    // An owner sees themself; their finance/staff see the owner they work for.
+    return { ...base, id: ownerScopeOf(u) ?? '__none__' };
   }
 
   private canSeeBank(u: AuthUser) {
@@ -42,7 +43,7 @@ export class OwnersService {
     const period = currentPeriod();
     const owners = await this.prisma.owner.findMany({
       where: this.where(u),
-      include: { properties: { where: { deletedAt: null }, select: { id: true, name: true } }, user: { select: { id: true, status: true } } },
+      include: { properties: { where: { deletedAt: null }, select: { id: true, name: true } }, user: { select: { id: true, status: true } }, _count: { select: { team: { where: { deletedAt: null } }, tenants: { where: { deletedAt: null } } } } },
       orderBy: { name: 'asc' },
     });
     const paid = await this.prisma.rentEntry.groupBy({
@@ -64,6 +65,9 @@ export class OwnersService {
       email: o.email,
       properties: o.properties,
       hasLogin: !!o.user,
+      login: o.user?.status ?? null,
+      teamCount: o._count.team,
+      tenantCount: o._count.tenants,
       collectedThisMonth: collected.get(o.id) ?? 0,
     }));
   }
@@ -74,11 +78,36 @@ export class OwnersService {
     return { ...owner, bankAccount: this.canSeeBank(u) ? owner.bankAccount : mask(owner.bankAccount), pan: this.canSeeBank(u) ? owner.pan : mask(owner.pan) };
   }
 
+  /** Adds an owner. With `giveLogin`, also creates their login and sends the invite (one step for the manager). */
   async create(u: AuthUser, body: unknown) {
-    const data = parse(ownerSchema, body);
+    const { giveLogin, ...rest } = (body ?? {}) as Record<string, unknown> & { giveLogin?: boolean };
+    const data = parse(ownerSchema, rest);
+    if (giveLogin) {
+      if (!data.email) throw new BusinessError('EMAIL_REQUIRED', 'Add the owner’s email so they can get a login.', 400);
+      if (await this.prisma.user.findUnique({ where: { email: data.email.toLowerCase() } })) {
+        throw new BusinessError('EMAIL_TAKEN', 'Someone already uses this email to sign in.');
+      }
+    }
     const owner = await this.prisma.owner.create({ data: { ...data, companyId: u.companyId } });
     await this.activity.log(u, u.companyId, { entityType: 'OWNER', entityId: owner.id, action: 'create', summary: `Added owner ${owner.name}` });
-    return owner;
+    const invite = giveLogin ? await this.inviteOwner(u, owner.id) : {};
+    return { ...owner, ...invite };
+  }
+
+  /** Creates (or re-sends) the owner's login invite. */
+  async inviteOwner(u: AuthUser, id: string) {
+    const owner = await this.prisma.owner.findFirst({ where: { AND: [this.where(u), { id }] }, include: { user: true } });
+    if (!owner) throw new NotFound('Owner');
+    if (!owner.email) throw new BusinessError('EMAIL_REQUIRED', 'Add the owner’s email first.', 400);
+    if (owner.user?.status === 'ACTIVE') throw new BusinessError('ALREADY_ACTIVE', 'This owner already has a login.');
+    let user = owner.user;
+    if (!user) {
+      if (await this.prisma.user.findUnique({ where: { email: owner.email.toLowerCase() } })) throw new BusinessError('EMAIL_TAKEN', 'Someone already uses this email to sign in.');
+      user = await this.prisma.user.create({ data: { companyId: u.companyId, name: owner.name, email: owner.email.toLowerCase(), phone: owner.phone, role: 'OWNER', status: 'INVITED', ownerId: owner.id } });
+    }
+    const invite = await this.auth.sendInvite(user);
+    await this.activity.log(u, u.companyId, { entityType: 'OWNER', entityId: owner.id, action: 'invite', summary: `Sent login invite to owner ${owner.name}` });
+    return invite;
   }
 
   async update(u: AuthUser, id: string, body: unknown) {
@@ -118,6 +147,12 @@ export class OwnersController {
   @Post()
   create(@CurrentUser() u: AuthUser, @Body() body: unknown) {
     return this.owners.create(u, body);
+  }
+
+  @Can('owners:write')
+  @Post(':id/invite')
+  invite(@CurrentUser() u: AuthUser, @Param('id') id: string) {
+    return this.owners.inviteOwner(u, id);
   }
 
   @Can('owners:write')

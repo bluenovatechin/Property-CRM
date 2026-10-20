@@ -102,6 +102,7 @@ export class AuthService {
         propertyAccess: { select: { propertyId: true } },
         tenant: { select: { id: true, fullName: true } },
         owner: { select: { id: true, name: true } },
+        teamOwner: { select: { id: true, name: true } },
       },
     });
     return {
@@ -115,6 +116,7 @@ export class AuthService {
       propertyIds: user.propertyAccess.map((a) => a.propertyId),
       tenant: user.tenant,
       owner: user.owner,
+      teamOwner: user.teamOwner,
     };
   }
 

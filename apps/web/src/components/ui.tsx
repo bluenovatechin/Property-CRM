@@ -36,12 +36,13 @@ export const PRIORITY_COLOR: Record<string, string> = { URGENT: '#c8243f', HIGH:
 export const UNIT_COLOR: Record<string, string> = { OCCUPIED: 'var(--occupied)', VACANT: 'var(--vacant)', RESERVED: 'var(--reserved)', MAINTENANCE: 'var(--maint)' };
 
 /* ── Layout helpers ────────────────────────────────────────────────────── */
-export function PageHead({ eyebrow, title, actions, children }: { eyebrow?: ReactNode; title: ReactNode; actions?: ReactNode; children?: ReactNode }) {
+export function PageHead({ eyebrow, title, hint, actions, children }: { eyebrow?: ReactNode; title: ReactNode; hint?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
   return (
     <div className="page-head">
       <div>
         {eyebrow && <div className="eyebrow">{eyebrow}</div>}
         <h1>{title}</h1>
+        {hint && <p className="page-hint">{hint}</p>}
         {children}
       </div>
       {actions && <div className="row">{actions}</div>}

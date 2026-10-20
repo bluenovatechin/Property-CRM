@@ -23,8 +23,17 @@ export interface AuthUser {
   email: string;
   ownerId: string | null;
   tenantId: string | null;
-  /** Properties a MANAGER / FINANCE / STAFF user is assigned to. */
+  /** Owner a FINANCE / STAFF user works for (sees that owner's properties). */
+  teamOwnerId: string | null;
+  /** Extra properties a FINANCE / STAFF user is assigned to directly by the company. */
   propertyIds: string[];
+}
+
+/** The owner whose properties this user works with: the owner themself, or the owner they work for. */
+export function ownerScopeOf(u: Pick<AuthUser, 'role' | 'ownerId' | 'teamOwnerId'>): string | null {
+  if (u.role === 'OWNER') return u.ownerId;
+  if (u.role === 'FINANCE' || u.role === 'STAFF') return u.teamOwnerId;
+  return null;
 }
 
 export const ACCESS_COOKIE = 'access_token';
@@ -80,6 +89,7 @@ export class AuthGuard implements CanActivate {
       email: user.email,
       ownerId: user.ownerId,
       tenantId: user.tenantId,
+      teamOwnerId: user.teamOwnerId,
       propertyIds: user.propertyAccess.map((a) => a.propertyId),
     };
 

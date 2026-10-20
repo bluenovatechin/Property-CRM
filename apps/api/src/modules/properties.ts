@@ -117,18 +117,15 @@ export class PropertiesService {
   }
 
   async create(u: AuthUser, body: unknown) {
-    const data = parse(propertySchema, body);
+    // An owner always adds properties for themself.
+    const raw = (body ?? {}) as Record<string, unknown>;
+    const data = parse(propertySchema, u.role === 'OWNER' ? { ...raw, ownerId: u.ownerId } : raw);
     const owner = await this.prisma.owner.findFirst({ where: { id: data.ownerId, companyId: u.companyId, deletedAt: null } });
     if (!owner) throw new NotFound('Owner');
     const dup = await this.prisma.property.findFirst({ where: { companyId: u.companyId, code: data.code } });
     if (dup) throw new BusinessError('CODE_TAKEN', `The code ${data.code} is already used by ${dup.name}.`);
     const property = await this.prisma.property.create({
-      data: {
-        ...data,
-        companyId: u.companyId,
-        // The manager who creates a property is given access to it.
-        access: u.role === 'MANAGER' ? { create: { userId: u.id } } : undefined,
-      },
+      data: { ...data, companyId: u.companyId },
     });
     await this.activity.log(u, u.companyId, { entityType: 'PROPERTY', entityId: property.id, action: 'create', summary: `Created property ${property.name}` });
     return property;
@@ -137,6 +134,7 @@ export class PropertiesService {
   async update(u: AuthUser, id: string, body: unknown) {
     const before = await this.scope.assertProperty(u, id);
     const data = parse(propertySchema.partial(), body);
+    if (u.role === 'OWNER') delete data.ownerId; // an owner cannot hand a property to someone else
     if (data.ownerId) {
       const owner = await this.prisma.owner.findFirst({ where: { id: data.ownerId, companyId: u.companyId, deletedAt: null } });
       if (!owner) throw new NotFound('Owner');

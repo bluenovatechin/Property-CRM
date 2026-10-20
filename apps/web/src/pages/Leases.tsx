@@ -37,8 +37,8 @@ export function LeasesPage() {
   return (
     <>
       <PageHead
-        eyebrow="Agreements"
-        title="Leases"
+        title="Agreements"
+        hint="A rent agreement links one tenant to one unit, with rent, deposit and dates. Activating it marks the unit as occupied."
         actions={
           can('leases:write') && (
             <Link className="btn primary" to="/leases/new">
@@ -223,7 +223,7 @@ export function NewLeasePage() {
   const STEPS = ['Unit and tenant', 'Terms', 'Tenant access', 'Review'];
   return (
     <>
-      <PageHead eyebrow="Leases" title="New lease" actions={<Link className="btn" to="/leases">Cancel</Link>} />
+      <PageHead title="New agreement" hint="Four short steps: choose the unit and tenant, set rent and dates, invite the tenant, then activate." actions={<Link className="btn" to="/leases">Cancel</Link>} />
       <nav className="card steps" aria-label="Steps">
         {STEPS.map((s, i) => (
           <button key={s} className={step === i + 1 ? 'cur' : step > i + 1 ? 'done' : ''} onClick={() => (i + 1 < step || stepOk.slice(1, i + 1).every(Boolean)) && setStep(i + 1)} aria-current={step === i + 1 ? 'step' : undefined}>

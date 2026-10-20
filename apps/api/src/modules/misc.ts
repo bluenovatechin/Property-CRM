@@ -68,6 +68,38 @@ export class SearchController {
   }
 }
 
+/** Progress for the "Getting started" checklist on the dashboard (counts within the user's scope). */
+@Controller('setup')
+export class SetupController {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scope: ScopeService,
+  ) {}
+
+  @Can('dashboard:read')
+  @Get()
+  async progress(@CurrentUser() u: AuthUser) {
+    const month = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date()).slice(0, 7);
+    const ownerScope = u.role === 'OWNER' ? u.ownerId : null;
+    const [owners, ownersWithLogin, properties, units, tenants, leases, rent, team] = await Promise.all([
+      this.prisma.owner.count({ where: { companyId: u.companyId, deletedAt: null, ...(ownerScope ? { id: ownerScope } : {}) } }),
+      this.prisma.owner.count({ where: { companyId: u.companyId, deletedAt: null, user: { isNot: null } } }),
+      this.prisma.property.count({ where: this.scope.propertyWhere(u) }),
+      this.prisma.unit.count({ where: this.scope.unitWhere(u) }),
+      this.prisma.tenant.count({ where: this.scope.tenantWhere(u) }),
+      this.prisma.lease.count({ where: { AND: [this.scope.leaseWhere(u), { status: 'ACTIVE' }] } }),
+      this.prisma.rentEntry.count({ where: { period: month, lease: this.scope.leaseWhere(u) } }),
+      this.prisma.user.count({
+        where:
+          u.role === 'OWNER'
+            ? { teamOwnerId: u.ownerId ?? '__none__', deletedAt: null }
+            : { companyId: u.companyId, deletedAt: null, role: { in: ['FINANCE', 'STAFF'] } },
+      }),
+    ]);
+    return { owners, ownersWithLogin, properties, units, tenants, leases, rent, team };
+  }
+}
+
 @Controller('activity')
 export class ActivityController {
   constructor(

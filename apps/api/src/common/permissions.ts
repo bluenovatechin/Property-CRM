@@ -1,34 +1,42 @@
 import { Role } from '@prisma/client';
 
 const ADMIN_MANAGER: Role[] = ['SUPER_ADMIN', 'MANAGER'];
-const OFFICE: Role[] = ['SUPER_ADMIN', 'MANAGER', 'FINANCE'];
+/** People who run properties day to day: the company (admin, manager) and the owner themself. */
+const RUNS_PROPERTIES: Role[] = ['SUPER_ADMIN', 'MANAGER', 'OWNER'];
+const MONEY: Role[] = ['SUPER_ADMIN', 'MANAGER', 'OWNER', 'FINANCE'];
 
 /**
- * Role-based permissions (SRS 2.2). Each endpoint declares one of these with @Can(...).
- * Which records a user may see is decided separately by ScopeService (property scope).
+ * Who may do what (each endpoint declares one with @Can).
+ * Which records they see is decided by ScopeService:
+ *   Super Admin / Manager → the whole company
+ *   Owner                 → their own properties
+ *   Owner's finance/staff → that owner's properties (staff: only tickets assigned to them)
+ *   Tenant                → only their own lease, rent and requests (portal)
  */
 export const PERMS = {
-  'users:manage': ['SUPER_ADMIN'],
-  'properties:read': ['SUPER_ADMIN', 'MANAGER', 'FINANCE', 'OWNER', 'STAFF'],
-  'properties:write': ADMIN_MANAGER,
-  'units:write': ADMIN_MANAGER,
-  'owners:read': ['SUPER_ADMIN', 'MANAGER', 'FINANCE', 'OWNER'],
+  /** Invite and manage people. Admin: everyone · Manager: owners, staff, finance · Owner: their own staff & finance. */
+  'team:manage': RUNS_PROPERTIES,
+  'admin:all': ['SUPER_ADMIN'],
+  'properties:read': ['SUPER_ADMIN', 'MANAGER', 'OWNER', 'FINANCE', 'STAFF'],
+  'properties:write': RUNS_PROPERTIES,
+  'units:write': RUNS_PROPERTIES,
+  'owners:read': MONEY,
   'owners:write': ADMIN_MANAGER,
-  'tenants:read': OFFICE,
-  'tenants:write': ADMIN_MANAGER,
-  'leases:read': ['SUPER_ADMIN', 'MANAGER', 'FINANCE', 'OWNER'],
-  'leases:write': ADMIN_MANAGER,
-  'rent:read': ['SUPER_ADMIN', 'MANAGER', 'FINANCE', 'OWNER'],
-  'rent:write': ['SUPER_ADMIN', 'MANAGER', 'FINANCE', 'OWNER'],
-  'maintenance:read': ['SUPER_ADMIN', 'MANAGER', 'FINANCE', 'STAFF', 'OWNER'],
-  'maintenance:write': ['SUPER_ADMIN', 'MANAGER', 'STAFF'],
-  'maintenance:assign': ADMIN_MANAGER,
-  'expenses:read': ['SUPER_ADMIN', 'MANAGER', 'FINANCE', 'OWNER'],
-  'expenses:write': OFFICE,
-  'dashboard:read': ['SUPER_ADMIN', 'MANAGER', 'FINANCE', 'OWNER'],
-  'reports:read': ['SUPER_ADMIN', 'MANAGER', 'FINANCE', 'OWNER'],
+  'tenants:read': MONEY,
+  'tenants:write': RUNS_PROPERTIES,
+  'leases:read': MONEY,
+  'leases:write': RUNS_PROPERTIES,
+  'rent:read': MONEY,
+  'rent:write': MONEY,
+  'maintenance:read': ['SUPER_ADMIN', 'MANAGER', 'OWNER', 'FINANCE', 'STAFF'],
+  'maintenance:write': ['SUPER_ADMIN', 'MANAGER', 'OWNER', 'STAFF'],
+  'maintenance:assign': RUNS_PROPERTIES,
+  'expenses:read': MONEY,
+  'expenses:write': MONEY,
+  'dashboard:read': MONEY,
+  'reports:read': MONEY,
   'activity:read': ADMIN_MANAGER,
-  'search:use': OFFICE,
+  'search:use': MONEY,
   'jobs:run': ['SUPER_ADMIN'],
   portal: ['TENANT'],
 } satisfies Record<string, Role[]>;

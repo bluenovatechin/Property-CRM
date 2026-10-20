@@ -7,16 +7,36 @@ import { ago, initials, ROLE_LABEL } from '../lib/format';
 import type { Notification } from '../lib/types';
 import { Icon } from './Icon';
 
-const NAV: { to: string; label: string; icon: string; perm: string; end?: boolean }[] = [
-  { to: '/', label: 'Dashboard', icon: 'dashboard', perm: 'dashboard:read', end: true },
-  { to: '/properties', label: 'Properties', icon: 'building', perm: 'properties:read' },
-  { to: '/tenants', label: 'Tenants', icon: 'users', perm: 'tenants:read' },
-  { to: '/leases', label: 'Leases', icon: 'file', perm: 'leases:read' },
-  { to: '/rent', label: 'Monthly rent', icon: 'rupee', perm: 'rent:read' },
-  { to: '/maintenance', label: 'Maintenance', icon: 'wrench', perm: 'maintenance:read' },
+/** Plain names, in the order work happens: owners → properties → tenants → agreements → rent → repairs. */
+const NAV: { to: string; label: string; ownerLabel?: string; icon: string; perm: string; end?: boolean }[] = [
+  { to: '/', label: 'Home', icon: 'dashboard', perm: 'dashboard:read', end: true },
+  { to: '/owners', label: 'Owners', icon: 'user', perm: 'owners:write' },
+  { to: '/properties', label: 'Properties', ownerLabel: 'My properties', icon: 'building', perm: 'properties:read' },
+  { to: '/tenants', label: 'Tenants', ownerLabel: 'My tenants', icon: 'users', perm: 'tenants:read' },
+  { to: '/leases', label: 'Agreements', icon: 'file', perm: 'leases:read' },
+  { to: '/rent', label: 'Rent', icon: 'rupee', perm: 'rent:read' },
+  { to: '/maintenance', label: 'Repairs', icon: 'wrench', perm: 'maintenance:read' },
   { to: '/expenses', label: 'Expenses', icon: 'wallet', perm: 'expenses:read' },
   { to: '/reports', label: 'Reports', icon: 'chart', perm: 'reports:read' },
 ];
+
+/** One line telling people who they are and what they look after. */
+function whoAmI(me: { role: string; owner: { name: string } | null; teamOwner: { name: string } | null; company: string }): string {
+  switch (me.role) {
+    case 'SUPER_ADMIN':
+      return `Full access · ${me.company}`;
+    case 'MANAGER':
+      return 'You look after all owners and their properties';
+    case 'OWNER':
+      return 'You see and manage only your own properties';
+    case 'FINANCE':
+      return me.teamOwner ? `Finance for ${me.teamOwner.name}` : 'Finance for your assigned properties';
+    case 'STAFF':
+      return me.teamOwner ? `Repairs for ${me.teamOwner.name}` : 'Repairs assigned to you';
+    default:
+      return '';
+  }
+}
 
 export function Layout() {
   const { me, can, signOut } = useAuth();
@@ -35,24 +55,30 @@ export function Layout() {
           </span>
           Property CRM
         </Link>
+        <div className="who">
+          <b>{ROLE_LABEL[me.role]}</b>
+          {whoAmI(me)}
+        </div>
         <nav className="nav" aria-label="Main">
           {NAV.filter((n) => can(n.perm)).map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end}>
               <Icon name={n.icon} />
-              {n.label}
+              {me.role === 'OWNER' && n.ownerLabel ? n.ownerLabel : n.label}
             </NavLink>
           ))}
-          {can('users:manage') && (
+          {can('team:manage') && (
             <>
-              <div className="nav-label">Admin</div>
+              <div className="nav-label">People</div>
               <NavLink to="/users">
                 <Icon name="shield" />
-                Users &amp; roles
+                {me.role === 'OWNER' ? 'My team' : 'People & access'}
               </NavLink>
-              <NavLink to="/activity">
-                <Icon name="clock" />
-                Activity log
-              </NavLink>
+              {can('activity:read') && (
+                <NavLink to="/activity">
+                  <Icon name="clock" />
+                  Activity log
+                </NavLink>
+              )}
             </>
           )}
         </nav>

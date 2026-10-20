@@ -46,7 +46,8 @@ export function MaintenancePage() {
     <>
       <PageHead
         eyebrow={me?.role === 'STAFF' ? 'Tickets assigned to you' : propertyId ? properties.data?.find((p) => p.id === propertyId)?.name : 'All properties'}
-        title="Maintenance"
+        title="Repairs"
+        hint={me?.role === 'STAFF' ? 'Repairs assigned to you. Click a card, start work, then mark it resolved.' : 'Every repair request moves left to right: Open → In progress → Resolved → Closed. Click a card to assign staff or update it.'}
         actions={
           can('maintenance:write') && (
             <button className="btn primary" onClick={() => setCreating(true)}>

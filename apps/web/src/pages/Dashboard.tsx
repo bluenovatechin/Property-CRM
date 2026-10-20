@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
+import { GettingStarted } from '../components/GettingStarted';
 import { Icon } from '../components/Icon';
 import { Chip, Empty, ErrorNote, Kpi, Loading, PageHead, PRIORITY_COLOR, StatusChip, UNIT_COLOR } from '../components/ui';
 import { api, qs } from '../lib/api';
@@ -48,6 +49,7 @@ export function DashboardPage() {
     queryFn: () => api.get<DashboardData>(`/dashboard${qs({ propertyId, period })}`),
   });
 
+  const hasProperties = (properties.data?.length ?? 0) > 0;
   const setParam = (k: string, v: string) => {
     const next = new URLSearchParams(params);
     if (v) next.set(k, v);
@@ -63,17 +65,22 @@ export function DashboardPage() {
       <PageHead
         eyebrow={new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         title={`${greeting}, ${me?.name}`}
+        hint="Your business at a glance. Click any number to see the list behind it."
         actions={
-          <>
-            <Link className="btn" to="/leases/new">
-              New lease
-            </Link>
-            <Link className="btn primary" to={`/rent?period=${period}`}>
-              <Icon name="plus" /> Enter {periodLabel(period).split(' ')[0]} rent
-            </Link>
-          </>
+          hasProperties && (
+            <>
+              <Link className="btn" to="/leases/new">
+                New agreement
+              </Link>
+              <Link className="btn primary" to={`/rent?period=${period}`}>
+                <Icon name="plus" /> Record {periodLabel(period).split(' ')[0]} rent
+              </Link>
+            </>
+          )
         }
       />
+      <GettingStarted />
+      {hasProperties && (
       <div className="row">
         <label className="select-inline">
           <span>Property</span>
@@ -97,10 +104,15 @@ export function DashboardPage() {
           </select>
         </label>
       </div>
+      )}
 
       <ErrorNote error={error} />
       {isLoading || !data ? (
         <Loading />
+      ) : !hasProperties ? (
+        <section className="card">
+          <Empty title="Your numbers will appear here">Once a property with units is added, this page shows occupancy, rent collected, dues and repairs.</Empty>
+        </section>
       ) : (
         <>
           <Hero data={data} />
