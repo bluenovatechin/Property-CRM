@@ -115,20 +115,24 @@ export function UnitDetailPage() {
                 <div className="k">Status</div>
                 <div className="v">{label(u.status)}</div>
               </div>
-              <div>
-                <div className="k">Monthly rent</div>
-                <div className="v">{inr(lease?.monthlyRent ?? u.expectedRent)}</div>
-              </div>
-              <div>
-                <div className="k">Security deposit</div>
-                <div className="v">{inr(lease?.securityDeposit ?? u.securityDeposit)}</div>
-              </div>
-              <div>
-                <div className="k">Pending amount</div>
-                <div className="v" style={{ color: u.pendingAmount ? 'var(--danger)' : 'var(--success)' }}>
-                  {inr(u.pendingAmount)}
-                </div>
-              </div>
+              {can('rent:read') && (
+                <>
+                  <div>
+                    <div className="k">Monthly rent</div>
+                    <div className="v">{inr(lease?.monthlyRent ?? u.expectedRent)}</div>
+                  </div>
+                  <div>
+                    <div className="k">Security deposit</div>
+                    <div className="v">{inr(lease?.securityDeposit ?? u.securityDeposit)}</div>
+                  </div>
+                  <div>
+                    <div className="k">Pending amount</div>
+                    <div className="v" style={{ color: u.pendingAmount ? 'var(--danger)' : 'var(--success)' }}>
+                      {inr(u.pendingAmount)}
+                    </div>
+                  </div>
+                </>
+              )}
               <div>
                 <div className="k">{lease ? 'Rent due day' : 'Vacant since'}</div>
                 <div className="v">{lease ? `${lease.dueDay}th of month` : date(u.vacantSince)}</div>
@@ -169,50 +173,52 @@ export function UnitDetailPage() {
             )}
           </section>
 
-          <section className="card">
-            <div className="card-head">
-              <h2>Rent history</h2>
-              {lease && (
-                <span className="muted small">
-                  Received this lease <b style={{ color: 'var(--ink)' }}>{inr(u.receivedThisLease)}</b>
-                </span>
-              )}
-            </div>
-            {u.rent.length ? (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Month</th>
-                      <th className="right">Amount</th>
-                      <th>Due</th>
-                      <th>Paid on</th>
-                      <th>Mode · ref</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {u.rent.map((r) => (
-                      <tr key={r.id}>
-                        <td>
-                          <b>{periodLabel(r.period)}</b>
-                        </td>
-                        <td className="right num">{inr(r.amount)}</td>
-                        <td className="muted">{date(r.dueDate)}</td>
-                        <td>{date(r.paidOn)}</td>
-                        <td className="muted">{r.mode ? `${modeLabel(r.mode)}${r.reference ? ` · ${r.reference}` : ''}` : '—'}</td>
-                        <td>
-                          <StatusChip status={r.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {can('rent:read') && (
+            <section className="card">
+              <div className="card-head">
+                <h2>Rent history</h2>
+                {lease && (
+                  <span className="muted small">
+                    Received this lease <b style={{ color: 'var(--ink)' }}>{inr(u.receivedThisLease)}</b>
+                  </span>
+                )}
               </div>
-            ) : (
-              <Empty title="No rent entered yet" />
-            )}
-          </section>
+              {u.rent.length ? (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Month</th>
+                        <th className="right">Amount</th>
+                        <th>Due</th>
+                        <th>Paid on</th>
+                        <th>Mode · ref</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {u.rent.map((r) => (
+                        <tr key={r.id}>
+                          <td>
+                            <b>{periodLabel(r.period)}</b>
+                          </td>
+                          <td className="right num">{inr(r.amount)}</td>
+                          <td className="muted">{date(r.dueDate)}</td>
+                          <td>{date(r.paidOn)}</td>
+                          <td className="muted">{r.mode ? `${modeLabel(r.mode)}${r.reference ? ` · ${r.reference}` : ''}` : '—'}</td>
+                          <td>
+                            <StatusChip status={r.status} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <Empty title="No rent entered yet" />
+              )}
+            </section>
+          )}
         </div>
 
         <div className="stack" style={{ gap: 20 }}>

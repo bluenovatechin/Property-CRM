@@ -573,9 +573,11 @@ export function LeaseDetailPage() {
               ← Previous agreement
             </Link>
           )}
-          <Link className="btn" to={`/rent?unit=${l.unit.unitNo}`}>
-            Rent for this unit
-          </Link>
+          {can('rent:read') && (
+            <Link className="btn" to={`/rent?unit=${l.unit.unitNo}`}>
+              Rent for this unit
+            </Link>
+          )}
         </section>
       </div>
       {modal === 'renew' && <RenewModal lease={l} onClose={() => setModal(null)} onDone={(newId) => navigate(`/leases/${newId}`)} />}

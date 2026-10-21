@@ -122,8 +122,8 @@ export class UsersService {
         ownerId = owner.id;
       } else {
         // New owner: create their owner profile at the same time.
-        if (!data.phone || !/^[6-9]\d{9}$/.test(data.phone)) {
-          throw new BusinessError('VALIDATION', 'Enter the owner’s 10-digit mobile number.', 400);
+        if (!data.phone?.trim()) {
+          throw new BusinessError('VALIDATION', 'Enter the owner’s mobile number.', 400);
         }
         const owner = await this.prisma.owner.create({ data: { companyId: u.companyId, name: data.name, phone: data.phone, email: data.email } });
         ownerId = owner.id;

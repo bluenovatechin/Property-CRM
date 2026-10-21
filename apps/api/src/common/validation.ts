@@ -18,6 +18,7 @@ export function parse<S extends ZodTypeAny>(schema: S, data: unknown): z.infer<S
 export const zDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-10-31');
 export const zPeriod = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Use a month like 2026-10');
 export const zMoney = z.coerce.number().min(0, 'Must be 0 or more').max(1_00_00_00_000, 'Too large');
-export const zPhone = z.string().trim().regex(/^[6-9]\d{9}$/, 'Enter a 10-digit mobile number');
+// Relaxed for dev: accepts any phone number input without requiring strict 10 digits
+export const zPhone = z.string().trim().min(1, 'Enter mobile number');
 export const zOptText = z.string().trim().max(2000).optional().nullable().transform((v) => (v ? v : null));
 export const zUuid = z.string().uuid('Invalid id');

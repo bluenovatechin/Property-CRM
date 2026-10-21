@@ -12,15 +12,15 @@ import { PrismaService } from '../prisma.service';
 const OPEN_TICKET = ['OPEN', 'IN_PROGRESS', 'REOPENED'] as const;
 
 const propertySchema = z.object({
-  code: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{2,20}$/, 'Use 2–20 letters, numbers or dashes, e.g. SUN-RES'),
-  name: z.string().trim().min(2, 'Enter the property name'),
+  code: z.string().trim().toUpperCase().min(1, 'Enter property code'),
+  name: z.string().trim().min(1, 'Enter the property name'),
   type: z.enum(['RESIDENTIAL', 'COMMERCIAL', 'OFFICE', 'SHOP', 'WAREHOUSE', 'MIXED']),
-  addressLine1: z.string().trim().min(3, 'Enter the address'),
+  addressLine1: z.string().trim().min(1, 'Enter the address'),
   addressLine2: zOptText,
   area: zOptText,
-  city: z.string().trim().min(2, 'Enter the city'),
-  state: z.string().trim().min(2, 'Enter the state'),
-  pincode: z.string().trim().regex(/^\d{6}$/, 'PIN code has 6 digits'),
+  city: z.string().trim().min(1, 'Enter the city'),
+  state: z.string().trim().min(1, 'Enter the state'),
+  pincode: z.string().trim().default(''),
   ownerId: z.string().uuid('Choose an owner'),
   status: z.enum(['ACTIVE', 'INACTIVE', 'UNDER_MAINTENANCE']).default('ACTIVE'),
   notes: zOptText,
@@ -143,7 +143,7 @@ export class PropertiesService {
       const dup = await this.prisma.property.findFirst({ where: { companyId: u.companyId, code: data.code } });
       if (dup) throw new BusinessError('CODE_TAKEN', `The code ${data.code} is already used.`);
     }
-    const property = await this.prisma.property.update({ where: { id }, data });
+    const property = await this.prisma.property.update({ where: { id }, data: data as any });
     await this.activity.log(u, u.companyId, { entityType: 'PROPERTY', entityId: id, action: 'update', summary: `Updated property ${before.name}`, newValues: data });
     return property;
   }

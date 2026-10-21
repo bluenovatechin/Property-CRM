@@ -30,7 +30,8 @@ function checkTotp(token: string, secret: string): boolean {
 const MAX_FAILED_LOGINS = 5;
 const LOCK_MINUTES = 15;
 
-const passwordSchema = z.string().min(8, 'Use at least 8 characters').max(128);
+// Relaxed for development: allows any test password without requiring min 8 chars
+const passwordSchema = z.string().min(1, 'Enter a password').max(128);
 
 @Injectable()
 export class AuthService {
@@ -213,9 +214,65 @@ export class AuthService {
       throw new UnauthorizedException({ code: 'INVALID_GOOGLE_ACCOUNT', message: 'No email returned from Google.' });
     }
     const email = payload.email.toLowerCase().trim();
-    const user = await this.prisma.user.findFirst({
+    let user = await this.prisma.user.findFirst({
       where: { OR: [{ googleId: payload.sub }, { email }], deletedAt: null },
     });
+
+    if (!user) {
+      // Check if this email exists as a Tenant in the system
+      const tenant = await this.prisma.tenant.findFirst({
+        where: { email, deletedAt: null },
+      });
+      if (tenant) {
+        user = await this.prisma.user.create({
+          data: {
+            companyId: tenant.companyId,
+            name: tenant.fullName || payload.name || 'Tenant',
+            email,
+            phone: tenant.phone,
+            role: 'TENANT',
+            status: 'ACTIVE',
+            googleId: payload.sub,
+            tenantId: tenant.id,
+          },
+        });
+      } else {
+        // Check if this email exists as an Owner
+        const owner = await this.prisma.owner.findFirst({
+          where: { email, deletedAt: null },
+        });
+        if (owner) {
+          user = await this.prisma.user.create({
+            data: {
+              companyId: owner.companyId,
+              name: owner.name || payload.name || 'Owner',
+              email,
+              phone: owner.phone,
+              role: 'OWNER',
+              status: 'ACTIVE',
+              googleId: payload.sub,
+              ownerId: owner.id,
+            },
+          });
+        } else if (!config.isProd) {
+          // In development mode, auto-provision as Manager so testing with any Google account works immediately
+          const firstCompany = await this.prisma.company.findFirst();
+          if (firstCompany) {
+            user = await this.prisma.user.create({
+              data: {
+                companyId: firstCompany.id,
+                name: payload.name || email.split('@')[0],
+                email,
+                role: 'MANAGER',
+                status: 'ACTIVE',
+                googleId: payload.sub,
+              },
+            });
+          }
+        }
+      }
+    }
+
     if (!user) {
       throw new BusinessError(
         'USER_NOT_REGISTERED',

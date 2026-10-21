@@ -110,10 +110,12 @@ export function PropertyDetailPage() {
             {s.RESERVED}
           </div>
         </div>
-        <div>
-          <div className="label">Rent due</div>
-          <div className="value">{inrShort(p.stats.dues)}</div>
-        </div>
+        {can('rent:read') && (
+          <div>
+            <div className="label">Rent due</div>
+            <div className="value">{inrShort(p.stats.dues)}</div>
+          </div>
+        )}
         <div>
           <div className="label">Open tickets</div>
           <div className="value">{p.stats.openTickets}</div>

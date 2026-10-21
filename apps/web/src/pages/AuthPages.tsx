@@ -55,6 +55,7 @@ export function LoginPage() {
   const [twoFactorBusy, setTwoFactorBusy] = useState(false);
   const [twoFactorError, setTwoFactorError] = useState<unknown>(null);
   const [googleError, setGoogleError] = useState<unknown>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -233,7 +234,25 @@ export function LoginPage() {
             <input type="email" autoComplete="email" placeholder="you@company.com" {...f.bind('email')} autoFocus />
           </Field>
           <Field label="Password" error={f.errors.password}>
-            <input type="password" autoComplete="current-password" placeholder="••••••••" {...f.bind('password')} />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                {...f.bind('password')}
+                style={{ paddingRight: 42 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="btn icon sm ghost"
+                style={{ position: 'absolute', right: 6, color: 'var(--muted)', minHeight: 32, width: 32 }}
+                title={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                <Icon name={showPassword ? 'eye-off' : 'eye'} size={17} />
+              </button>
+            </div>
           </Field>
           <div className="row between">
             <span className="muted small">5 wrong attempts lock the account for 15 minutes.</span>
@@ -300,6 +319,8 @@ export function SetPasswordPage({ mode }: { mode: 'invite' | 'reset' }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [done, setDone] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const f = useForm({ password: '', confirm: '' });
 
   const onSubmit = f.submit(async (v) => {
@@ -334,11 +355,46 @@ export function SetPasswordPage({ mode }: { mode: 'invite' | 'reset' }) {
         ) : (
           <>
             <ErrorNote error={f.formError} />
-            <Field label="New password" error={f.errors.password} hint="At least 8 characters">
-              <input type="password" autoComplete="new-password" {...f.bind('password')} autoFocus />
+            <Field label="New password" error={f.errors.password}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  {...f.bind('password')}
+                  autoFocus
+                  style={{ paddingRight: 42 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="btn icon sm ghost"
+                  style={{ position: 'absolute', right: 6, color: 'var(--muted)', minHeight: 32, width: 32 }}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <Icon name={showPassword ? 'eye-off' : 'eye'} size={17} />
+                </button>
+              </div>
             </Field>
             <Field label="Repeat password" error={f.errors.confirm}>
-              <input type="password" autoComplete="new-password" {...f.bind('confirm')} />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  {...f.bind('confirm')}
+                  style={{ paddingRight: 42 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  className="btn icon sm ghost"
+                  style={{ position: 'absolute', right: 6, color: 'var(--muted)', minHeight: 32, width: 32 }}
+                  title={showConfirm ? 'Hide password' : 'Show password'}
+                  aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                >
+                  <Icon name={showConfirm ? 'eye-off' : 'eye'} size={17} />
+                </button>
+              </div>
             </Field>
             <button className="btn primary" disabled={f.busy || !token}>
               {mode === 'invite' ? 'Set password and continue' : 'Change password'}

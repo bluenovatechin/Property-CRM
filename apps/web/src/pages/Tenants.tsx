@@ -228,20 +228,24 @@ export function TenantDetailPage() {
           <div className="label">Unit</div>
           <div className="value">{t.activeLease ? <Link to={`/units/${t.activeLease.unit.id}`}>{t.activeLease.unit.unitNo}</Link> : '—'}</div>
         </div>
-        <div>
-          <div className="label">Monthly rent</div>
-          <div className="value">{t.activeLease ? inr(t.activeLease.monthlyRent) : '—'}</div>
-        </div>
-        <div>
-          <div className="label">Pending dues</div>
-          <div className="value" style={{ color: t.dues ? 'var(--danger)' : 'var(--success)' }}>
-            {inr(t.dues)}
-          </div>
-        </div>
-        <div>
-          <div className="label">Deposit held</div>
-          <div className="value">{inr(t.deposit)}</div>
-        </div>
+        {can('rent:read') && (
+          <>
+            <div>
+              <div className="label">Monthly rent</div>
+              <div className="value">{t.activeLease ? inr(t.activeLease.monthlyRent) : '—'}</div>
+            </div>
+            <div>
+              <div className="label">Pending dues</div>
+              <div className="value" style={{ color: t.dues ? 'var(--danger)' : 'var(--success)' }}>
+                {inr(t.dues)}
+              </div>
+            </div>
+            <div>
+              <div className="label">Deposit held</div>
+              <div className="value">{inr(t.deposit)}</div>
+            </div>
+          </>
+        )}
         <div>
           <div className="label">Lease ends</div>
           <div className="value">{t.activeLease ? date(t.activeLease.endDate) : '—'}</div>
@@ -294,47 +298,49 @@ export function TenantDetailPage() {
               </table>
             </div>
           </section>
-          <section className="card">
-            <div className="card-head">
-              <h2>Rent ledger</h2>
-              <span className="muted small">Last 12 months</span>
-            </div>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Month</th>
-                    <th className="right">Amount</th>
-                    <th>Paid on</th>
-                    <th>Reference</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {t.rent.map((r) => (
-                    <tr key={r.id}>
-                      <td>
-                        <b>{periodLabel(r.period)}</b>
-                      </td>
-                      <td className="right num">{inr(r.amount)}</td>
-                      <td>{date(r.paidOn)}</td>
-                      <td className="muted">{r.mode ? `${modeLabel(r.mode)}${r.reference ? ` · ${r.reference}` : ''}` : '—'}</td>
-                      <td>
-                        <StatusChip status={r.status} />
-                      </td>
-                    </tr>
-                  ))}
-                  {!t.rent.length && (
+          {can('rent:read') && (
+            <section className="card">
+              <div className="card-head">
+                <h2>Rent ledger</h2>
+                <span className="muted small">Last 12 months</span>
+              </div>
+              <div className="table-wrap">
+                <table>
+                  <thead>
                     <tr>
-                      <td colSpan={5} className="muted">
-                        No rent entries yet.
-                      </td>
+                      <th>Month</th>
+                      <th className="right">Amount</th>
+                      <th>Paid on</th>
+                      <th>Reference</th>
+                      <th>Status</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                  </thead>
+                  <tbody>
+                    {t.rent.map((r) => (
+                      <tr key={r.id}>
+                        <td>
+                          <b>{periodLabel(r.period)}</b>
+                        </td>
+                        <td className="right num">{inr(r.amount)}</td>
+                        <td>{date(r.paidOn)}</td>
+                        <td className="muted">{r.mode ? `${modeLabel(r.mode)}${r.reference ? ` · ${r.reference}` : ''}` : '—'}</td>
+                        <td>
+                          <StatusChip status={r.status} />
+                        </td>
+                      </tr>
+                    ))}
+                    {!t.rent.length && (
+                      <tr>
+                        <td colSpan={5} className="muted">
+                          No rent entries yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
           <section className="card card-pad">
             <h2 style={{ fontSize: 16, marginBottom: 6 }}>Maintenance requests</h2>
             {!t.tickets.length && <div className="muted small">No requests.</div>}

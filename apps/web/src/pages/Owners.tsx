@@ -4,12 +4,14 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Empty, ErrorNote, Field, InviteLinkModal, Loading, Modal, PageHead, StatusChip, useForm, useToast } from '../components/ui';
 import { api } from '../lib/api';
+import { useAuth } from '../lib/auth';
 import { initials, inr } from '../lib/format';
 import { useOwners } from '../lib/queries';
 import type { Owner } from '../lib/types';
 
 /** Managers: the owners they look after. Each owner can get a login and then runs their own properties. */
 export function OwnersPage() {
+  const { can } = useAuth();
   const qc = useQueryClient();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
@@ -39,9 +41,11 @@ export function OwnersPage() {
         title="Owners"
         hint="Add each property owner here. Give them a login so they can add their properties, tenants and their own staff and finance person."
         actions={
-          <button className="btn primary" onClick={() => setAdding(true)}>
-            <Icon name="plus" /> Add owner
-          </button>
+          can('owners:write') ? (
+            <button className="btn primary" onClick={() => setAdding(true)}>
+              <Icon name="plus" /> Add owner
+            </button>
+          ) : undefined
         }
       />
       <ErrorNote error={error} />
@@ -52,9 +56,11 @@ export function OwnersPage() {
           <Empty
             title="No owners yet"
             action={
-              <button className="btn primary" onClick={() => setAdding(true)}>
-                Add the first owner
-              </button>
+              can('owners:write') ? (
+                <button className="btn primary" onClick={() => setAdding(true)}>
+                  Add the first owner
+                </button>
+              ) : undefined
             }
           >
             Start here: every property belongs to one owner.
@@ -98,8 +104,10 @@ export function OwnersPage() {
                             <Link to={`/properties/${p.id}`}>{p.name}</Link>
                           </span>
                         ))
-                      ) : (
+                      ) : can('properties:write') ? (
                         <Link to={`/properties?new=1&owner=${o.id}`}>+ Add property</Link>
+                      ) : (
+                        <span className="muted">No properties</span>
                       )}
                     </td>
                     <td className="right num">{o.tenantCount}</td>
@@ -107,7 +115,7 @@ export function OwnersPage() {
                     <td className="right num">{inr(o.collectedThisMonth)}</td>
                     <td>{o.login ? <StatusChip status={o.login} text={o.login === 'ACTIVE' ? 'Can sign in' : o.login === 'INVITED' ? 'Invite sent' : 'Disabled'} /> : <StatusChip status="DRAFT" text="No login" />}</td>
                     <td className="right">
-                      {o.login !== 'ACTIVE' && (
+                      {can('owners:write') && o.login !== 'ACTIVE' && (
                         <button className="btn sm soft" onClick={() => invite(o)} disabled={!o.email} title={o.email ? undefined : 'Add an email first'}>
                           {o.login === 'INVITED' ? 'Resend invite' : 'Send login invite'}
                         </button>

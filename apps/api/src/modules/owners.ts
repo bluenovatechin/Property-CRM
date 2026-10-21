@@ -14,7 +14,7 @@ const ownerSchema = z.object({
   phone: zPhone,
   email: z.string().trim().email('Enter a valid email').optional().nullable().or(z.literal('')).transform((v) => v || null),
   address: zOptText,
-  pan: z.string().trim().toUpperCase().regex(/^[A-Z]{5}\d{4}[A-Z]$/, 'PAN looks like ABCDE1234F').optional().nullable().or(z.literal('')).transform((v) => v || null),
+  pan: zOptText,
   bankAccount: zOptText,
   ifsc: zOptText,
   notes: zOptText,
