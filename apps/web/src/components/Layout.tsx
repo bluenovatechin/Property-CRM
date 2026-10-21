@@ -85,6 +85,27 @@ export function Layout({ children }: { children?: ReactNode } = {}) {
             </>
           )}
         </nav>
+        <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
+          <Link
+            to="/landing"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              color: 'var(--ink-muted)',
+              textDecoration: 'none',
+              padding: '6px 8px',
+              borderRadius: 6,
+            }}
+            title="Open public landing page in new tab"
+          >
+            <Icon name="external" size={16} />
+            <span>Public Landing Page</span>
+          </Link>
+        </div>
         <div className="sidebar-foot">
           <span className="avatar">{initials(me.name)}</span>
           <div style={{ minWidth: 0, flex: 1 }}>

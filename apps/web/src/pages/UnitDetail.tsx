@@ -56,14 +56,16 @@ export function UnitDetailPage() {
     }
   };
 
+  const unitTitle = /^(unit|house|tenement|flat|shop|plot|bungalow|villa)/i.test(u.unitNo) ? u.unitNo : `Unit ${u.unitNo}`;
+
   return (
     <>
       <div className="crumbs">
-        <Link to="/properties">Properties</Link> / <Link to={`/properties/${u.property.id}`}>{u.property.name}</Link> / Unit {u.unitNo}
+        <Link to="/properties">Properties</Link> / <Link to={`/properties/${u.property.id}`}>{u.property.name}</Link> / {unitTitle}
       </div>
       <div className="page-head">
         <div className="row">
-          <h1>Unit {u.unitNo}</h1>
+          <h1>{unitTitle}</h1>
           <StatusChip status={u.status} />
           {thisMonth && lease && <StatusChip status={thisMonth.status} text={`${periodLabel(thisMonth.period).split(' ')[0]} rent ${label(thisMonth.status).toLowerCase()}`} />}
         </div>
@@ -324,7 +326,7 @@ function EditUnit({ u, onClose }: { u: UnitDetail; onClose: () => void }) {
   });
   return (
     <Modal
-      title={`Edit unit ${u.unitNo}`}
+      title={`Edit ${u.unitNo}`}
       onClose={onClose}
       footer={
         <>
@@ -340,19 +342,19 @@ function EditUnit({ u, onClose }: { u: UnitDetail; onClose: () => void }) {
       <form className="form" onSubmit={save} noValidate>
         <ErrorNote error={f.formError} />
         <div className="form-row">
-          <Field label="Unit number" error={f.errors.unitNo}>
+          <Field label="House / Tenement / Flat / Unit No." error={f.errors.unitNo} hint="Number in its society, building, or landmark">
             <input {...f.bind('unitNo')} />
           </Field>
-          <Field label="Floor">
-            <input type="number" {...f.bind('floor')} />
+          <Field label="Floor (Optional)" hint="Leave blank for house / tenement">
+            <input type="number" {...f.bind('floor')} placeholder="Leave blank if none" />
           </Field>
-          <Field label="Block">
-            <input {...f.bind('block')} />
+          <Field label="Block / Wing / Lane">
+            <input {...f.bind('block')} placeholder="Optional" />
           </Field>
         </div>
         <div className="form-row">
-          <Field label="Unit type" error={f.errors.unitType}>
-            <input {...f.bind('unitType')} />
+          <Field label="Type / Category" error={f.errors.unitType}>
+            <input {...f.bind('unitType')} placeholder="Tenement, 2BHK, Row House…" />
           </Field>
           <Field label="Area (sq ft)">
             <input type="number" {...f.bind('areaSqft')} />

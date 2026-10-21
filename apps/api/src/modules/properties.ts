@@ -35,7 +35,7 @@ const unitFields = {
 };
 
 const unitSchema = z.object({
-  unitNo: z.string().trim().min(1, 'Enter the unit number').max(20),
+  unitNo: z.string().trim().min(1, 'Enter the unit or house/tenement number').max(60),
   floor: z.coerce.number().int().min(-5).max(200).optional().nullable(),
   status: z.enum(['VACANT', 'RESERVED', 'MAINTENANCE']).default('VACANT'),
   notes: zOptText,
@@ -52,10 +52,10 @@ const bulkSchema = z.discriminatedUnion('mode', [
   }),
   z.object({
     mode: z.literal('range'),
-    prefix: z.string().trim().max(10).default(''),
+    prefix: z.string().trim().max(20).default(''),
     from: z.coerce.number().int().min(0),
     to: z.coerce.number().int().min(0),
-    padTo: z.coerce.number().int().min(1).max(6).default(3),
+    padTo: z.coerce.number().int().min(1).max(6).default(1),
     floor: z.coerce.number().int().optional().nullable(),
     ...unitFields,
   }),

@@ -32,8 +32,18 @@ export function PropertyDetailPage() {
 
   const floors = useMemo(() => {
     const map = new Map<string, GridUnit[]>();
+    const allNoFloor = (units.data?.length ?? 0) > 0 && units.data?.every((x) => x.floor === null);
     for (const u of units.data ?? []) {
-      const key = u.floor === null ? 'Other' : u.floor === 0 ? 'Ground' : `Floor ${u.floor}`;
+      const key =
+        u.floor === null
+          ? allNoFloor
+            ? units.data && units.data.length === 1
+              ? 'House / Tenement'
+              : 'Society Tenements & Houses'
+            : 'Ground / General Level'
+          : u.floor === 0
+          ? 'Ground Floor'
+          : `Floor ${u.floor}`;
       map.set(key, [...(map.get(key) ?? []), u]);
     }
     return [...map.entries()];
@@ -78,10 +88,10 @@ export function PropertyDetailPage() {
               <Icon name="edit" /> Edit
             </button>
             <button className="btn" onClick={() => setModal('unit')}>
-              Add one unit
+              + Add unit / house
             </button>
             <button className="btn primary" onClick={() => setModal('bulk')}>
-              <Icon name="plus" /> Bulk add units
+              <Icon name="plus" /> Bulk add (flats or tenements)
             </button>
           </div>
         )}
@@ -215,7 +225,9 @@ function SelectedUnit({ u, canWrite }: { u: GridUnit; canWrite: boolean }) {
           <div className="muted small" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>
             Selected unit
           </div>
-          <div style={{ fontSize: 24, fontWeight: 800 }}>Unit {u.unitNo}</div>
+          <div style={{ fontSize: 24, fontWeight: 800 }}>
+            {/^(unit|house|tenement|flat|shop|plot|bungalow|villa)/i.test(u.unitNo) ? u.unitNo : `Unit ${u.unitNo}`}
+          </div>
         </div>
         <StatusChip status={u.status} />
       </div>
@@ -295,8 +307,21 @@ function SelectedUnit({ u, canWrite }: { u: GridUnit; canWrite: boolean }) {
 function BulkUnits({ propertyId, onClose }: { propertyId: string; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
-  const [mode, setMode] = useState<'floors' | 'range'>('floors');
-  const f = useForm({ floorFrom: '1', floorTo: '10', unitsPerFloor: '10', prefix: '', from: '1', to: '100', padTo: '3', unitType: '2BHK', block: '', areaSqft: '', expectedRent: '', securityDeposit: '' });
+  const [mode, setMode] = useState<'floors' | 'range'>('range');
+  const f = useForm({
+    floorFrom: '1',
+    floorTo: '5',
+    unitsPerFloor: '4',
+    prefix: 'Tenement ',
+    from: '1',
+    to: '10',
+    padTo: '1',
+    unitType: 'Tenement',
+    block: '',
+    areaSqft: '',
+    expectedRent: '',
+    securityDeposit: '',
+  });
   const v = f.values;
   const preview = useMemo(() => {
     const pad = (n: number, l: number) => String(n).padStart(l, '0');
@@ -314,11 +339,13 @@ function BulkUnits({ propertyId, onClose }: { propertyId: string; onClose: () =>
   const save = f.submit(async (val) => {
     const res = await api.post<{ created: number; skipped: string[] }>(`/properties/${propertyId}/units/bulk`, {
       mode,
-      ...(mode === 'floors' ? { floorFrom: val.floorFrom, floorTo: val.floorTo, unitsPerFloor: val.unitsPerFloor } : { prefix: val.prefix, from: val.from, to: val.to, padTo: val.padTo }),
+      ...(mode === 'floors'
+        ? { floorFrom: val.floorFrom, floorTo: val.floorTo, unitsPerFloor: val.unitsPerFloor }
+        : { prefix: val.prefix, from: val.from, to: val.to, padTo: val.padTo }),
       unitType: val.unitType,
       block: val.block,
       areaSqft: val.areaSqft || null,
-      expectedRent: val.expectedRent,
+      expectedRent: val.expectedRent || 0,
       securityDeposit: val.securityDeposit || 0,
     });
     toast(`${res.created} units added${res.skipped.length ? ` · ${res.skipped.length} already existed` : ''}`);
@@ -330,7 +357,7 @@ function BulkUnits({ propertyId, onClose }: { propertyId: string; onClose: () =>
 
   return (
     <Modal
-      title="Bulk add units"
+      title="Bulk add units, tenements or flats"
       onClose={onClose}
       wide
       footer={
@@ -356,14 +383,30 @@ function BulkUnits({ propertyId, onClose }: { propertyId: string; onClose: () =>
       <form className="form" onSubmit={save} noValidate>
         <ErrorNote error={f.formError} />
         <div className="seg" role="tablist">
-          <button type="button" className={mode === 'floors' ? 'on' : ''} onClick={() => setMode('floors')}>
-            By floor (101, 102…)
-          </button>
           <button type="button" className={mode === 'range' ? 'on' : ''} onClick={() => setMode('range')}>
-            Number range (001…100)
+            🏠 Society Houses / Tenements (1…10, Tenement A1…)
+          </button>
+          <button type="button" className={mode === 'floors' ? 'on' : ''} onClick={() => setMode('floors')}>
+            🏢 Multi-Storey Flats (By Floor: 101, 102…)
           </button>
         </div>
-        {mode === 'floors' ? (
+
+        {mode === 'range' ? (
+          <div className="form-row">
+            <Field label="Prefix (Optional)" hint="e.g. 'Tenement ', 'House ', 'Plot ', or leave blank for 1, 2, 3">
+              <input {...f.bind('prefix')} placeholder="Tenement " />
+            </Field>
+            <Field label="From number" error={f.errors.from}>
+              <input type="number" min={0} {...f.bind('from')} />
+            </Field>
+            <Field label="To number" error={f.errors.to}>
+              <input type="number" min={0} {...f.bind('to')} />
+            </Field>
+            <Field label="Digits" hint="1 = (1, 2…), 2 = (01, 02…)">
+              <input type="number" min={1} max={6} {...f.bind('padTo')} />
+            </Field>
+          </div>
+        ) : (
           <div className="form-row">
             <Field label="First floor" error={f.errors.floorFrom} hint="0 = ground floor (G01…)">
               <input type="number" min={0} {...f.bind('floorFrom')} />
@@ -371,32 +414,18 @@ function BulkUnits({ propertyId, onClose }: { propertyId: string; onClose: () =>
             <Field label="Last floor" error={f.errors.floorTo}>
               <input type="number" min={0} {...f.bind('floorTo')} />
             </Field>
-            <Field label="Units per floor" error={f.errors.unitsPerFloor}>
+            <Field label="Flats per floor" error={f.errors.unitsPerFloor}>
               <input type="number" min={1} {...f.bind('unitsPerFloor')} />
             </Field>
           </div>
-        ) : (
-          <div className="form-row">
-            <Field label="Prefix" hint="e.g. G- for G-01">
-              <input {...f.bind('prefix')} />
-            </Field>
-            <Field label="From" error={f.errors.from}>
-              <input type="number" min={0} {...f.bind('from')} />
-            </Field>
-            <Field label="To" error={f.errors.to}>
-              <input type="number" min={0} {...f.bind('to')} />
-            </Field>
-            <Field label="Digits" hint="3 → 001">
-              <input type="number" min={1} max={6} {...f.bind('padTo')} />
-            </Field>
-          </div>
         )}
+
         <div className="form-row">
-          <Field label="Unit type" error={f.errors.unitType}>
-            <input {...f.bind('unitType')} placeholder="2BHK, Shop, Office…" />
+          <Field label="Unit / Property type" error={f.errors.unitType}>
+            <input {...f.bind('unitType')} placeholder="Tenement, Row House, 2BHK, Shop…" />
           </Field>
-          <Field label="Block / wing">
-            <input {...f.bind('block')} placeholder="A" />
+          <Field label="Block / Wing / Lane" hint="e.g. Lane A, Block 1 (Optional)">
+            <input {...f.bind('block')} placeholder="Optional" />
           </Field>
           <Field label="Area (sq ft)" error={f.errors.areaSqft}>
             <input type="number" {...f.bind('areaSqft')} />
@@ -410,7 +439,7 @@ function BulkUnits({ propertyId, onClose }: { propertyId: string; onClose: () =>
             <input type="number" {...f.bind('securityDeposit')} />
           </Field>
         </div>
-        <div className="alert info small">Existing unit numbers are skipped, so running this twice never creates duplicates. You can change any unit later.</div>
+        <div className="alert info small">Existing unit numbers are skipped, so running this twice never creates duplicates. You can change any unit details later.</div>
       </form>
     </Modal>
   );
@@ -419,17 +448,34 @@ function BulkUnits({ propertyId, onClose }: { propertyId: string; onClose: () =>
 function AddUnit({ propertyId, onClose }: { propertyId: string; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
-  const f = useForm({ unitNo: '', floor: '', block: '', unitType: '2BHK', areaSqft: '', expectedRent: '', securityDeposit: '', status: 'VACANT' });
+  const f = useForm({
+    unitNo: '',
+    floor: '',
+    block: '',
+    unitType: 'Tenement',
+    areaSqft: '',
+    expectedRent: '',
+    securityDeposit: '',
+    status: 'VACANT',
+  });
+
   const save = f.submit(async (v) => {
-    await api.post(`/properties/${propertyId}/units`, { ...v, floor: v.floor === '' ? null : v.floor, areaSqft: v.areaSqft || null, securityDeposit: v.securityDeposit || 0 });
-    toast(`Unit ${v.unitNo} added`);
+    await api.post(`/properties/${propertyId}/units`, {
+      ...v,
+      floor: v.floor === '' ? null : Number(v.floor),
+      areaSqft: v.areaSqft ? Number(v.areaSqft) : null,
+      securityDeposit: v.securityDeposit ? Number(v.securityDeposit) : 0,
+      expectedRent: v.expectedRent ? Number(v.expectedRent) : 0,
+    });
+    toast(`${v.unitNo} added`);
     qc.invalidateQueries({ queryKey: ['property-units', propertyId] });
     qc.invalidateQueries({ queryKey: ['property', propertyId] });
     onClose();
   });
+
   return (
     <Modal
-      title="Add a unit"
+      title="Add a unit, house or tenement"
       onClose={onClose}
       footer={
         <>
@@ -445,22 +491,40 @@ function AddUnit({ propertyId, onClose }: { propertyId: string; onClose: () => v
       <form className="form" onSubmit={save} noValidate>
         <ErrorNote error={f.formError} />
         <div className="form-row">
-          <Field label="Unit number" error={f.errors.unitNo}>
-            <input {...f.bind('unitNo')} autoFocus />
+          <Field
+            label="House / Tenement / Flat / Unit No."
+            error={f.errors.unitNo}
+            hint="Property number in its society, building, or landmark"
+          >
+            <input
+              {...f.bind('unitNo')}
+              placeholder="e.g. Tenement 14, House 24, Flat 101, Shop 5"
+              autoFocus
+            />
           </Field>
-          <Field label="Floor" error={f.errors.floor}>
-            <input type="number" {...f.bind('floor')} />
-          </Field>
-          <Field label="Block / wing">
-            <input {...f.bind('block')} />
+          <Field label="Floor (Optional)" hint="Leave blank for house / tenement or ground">
+            <input type="number" {...f.bind('floor')} placeholder="Leave blank if none" />
           </Field>
         </div>
+
         <div className="form-row">
-          <Field label="Unit type" error={f.errors.unitType}>
-            <input {...f.bind('unitType')} />
+          <Field label="Type / Category" error={f.errors.unitType}>
+            <input {...f.bind('unitType')} placeholder="Tenement, Row House, 2BHK, Shop…" />
+          </Field>
+          <Field label="Block / Wing / Lane (Optional)">
+            <input {...f.bind('block')} placeholder="e.g. Lane 2 or Block A" />
           </Field>
           <Field label="Area (sq ft)" error={f.errors.areaSqft}>
             <input type="number" {...f.bind('areaSqft')} />
+          </Field>
+        </div>
+
+        <div className="form-row">
+          <Field label="Expected rent (₹ / month)" error={f.errors.expectedRent}>
+            <input type="number" {...f.bind('expectedRent')} placeholder="12000" />
+          </Field>
+          <Field label="Security deposit (₹)" error={f.errors.securityDeposit}>
+            <input type="number" {...f.bind('securityDeposit')} placeholder="24000" />
           </Field>
           <Field label="Status">
             <select {...f.bind('status')}>
@@ -468,14 +532,6 @@ function AddUnit({ propertyId, onClose }: { propertyId: string; onClose: () => v
               <option value="RESERVED">Reserved</option>
               <option value="MAINTENANCE">Maintenance</option>
             </select>
-          </Field>
-        </div>
-        <div className="form-row">
-          <Field label="Expected rent (₹ / month)" error={f.errors.expectedRent}>
-            <input type="number" {...f.bind('expectedRent')} />
-          </Field>
-          <Field label="Security deposit (₹)" error={f.errors.securityDeposit}>
-            <input type="number" {...f.bind('securityDeposit')} />
           </Field>
         </div>
       </form>

@@ -12,11 +12,16 @@ function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="auth">
       <section className="auth-hero">
-        <div className="brand" style={{ color: '#fff' }}>
-          <span className="brand-mark" style={{ background: '#fff', color: 'var(--primary-ink)' }}>
-            <Icon name="home" size={20} stroke={2} />
-          </span>
-          Property CRM
+        <div className="row between" style={{ alignItems: 'center' }}>
+          <Link to="/landing" className="brand" style={{ color: '#fff', textDecoration: 'none' }} title="Visit Public Landing Page">
+            <span className="brand-mark" style={{ background: '#fff', color: 'var(--primary-ink)' }}>
+              <Icon name="home" size={20} stroke={2} />
+            </span>
+            Property CRM
+          </Link>
+          <Link to="/landing" style={{ color: '#fff', fontSize: 13, textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.15)', padding: '6px 14px', borderRadius: 20 }}>
+            Public website <Icon name="external" size={13} />
+          </Link>
         </div>
         <div className="stack" style={{ gap: 18 }}>
           <h1>Every property, unit and tenant in one place.</h1>
@@ -190,6 +195,11 @@ export function LoginPage() {
         </form>
       ) : (
         <form onSubmit={onSubmit} noValidate>
+          <div style={{ marginBottom: 8 }}>
+            <Link to="/landing" style={{ fontSize: 13, color: 'var(--primary-ink)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+              ← View public landing page & features
+            </Link>
+          </div>
           <div>
             <h2 style={{ fontSize: 28, fontWeight: 800 }}>Sign in</h2>
             <p className="muted" style={{ margin: '6px 0 0' }}>
