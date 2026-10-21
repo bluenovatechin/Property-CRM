@@ -17,7 +17,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (typeof body === 'object' && body && 'code' in body) {
         return res.status(status).json({ error: body });
       }
-      const message = typeof body === 'string' ? body : (body as { message?: string | string[] }).message;
+      const message =
+        status === 429
+          ? 'Too many requests. Please slow down and try again in a minute.'
+          : typeof body === 'string'
+            ? body
+            : (body as { message?: string | string[] }).message;
       return res.status(status).json({
         error: { code: HttpStatus[status] ?? 'ERROR', message: Array.isArray(message) ? message.join(', ') : message },
       });

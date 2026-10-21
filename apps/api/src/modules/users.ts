@@ -191,7 +191,7 @@ export class UsersService {
       if (data.status === 'DISABLED') await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
     });
     await this.activity.log(u, u.companyId, { entityType: 'USER', entityId: id, action: 'update', summary: `Updated ${user.name}`, newValues: data });
-    return { ok: true };
+    return { ok: true, user: { id, role: data.role ?? user.role, status: data.status ?? user.status } };
   }
 
   async resendInvite(u: AuthUser, id: string) {

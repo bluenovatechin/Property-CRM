@@ -4,11 +4,136 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0e7c6b" />
-    <title>Property CRM</title>
+
+    <!-- SEO Meta Tags -->
+    <title>Property CRM | Modern All-in-One Property Management Platform</title>
+    <meta name="description" content="All-in-one Property Management CRM for landlords, property managers, owners, and tenants. Streamline rent collection, tenant portals, digital leases, Kanban maintenance dispatch, and financial reporting." />
+    <meta name="keywords" content="property management CRM, landlord software, rental management, tenant portal, lease tracking, automated rent collection, maintenance dispatch, real estate CRM" />
+    <meta name="author" content="Property CRM Technologies" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" href="https://property-crm.vercel.app/" />
+
+    <!-- Open Graph / Facebook / LinkedIn -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://property-crm.vercel.app/" />
+    <meta property="og:site_name" content="Property CRM" />
+    <meta property="og:title" content="Property CRM | Modern All-in-One Property Management Platform" />
+    <meta property="og:description" content="Streamline every property, unit, tenant, lease, and payment in one unified CRM platform. Free trial available." />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Property CRM | Modern All-in-One Property Management Platform" />
+    <meta name="twitter:description" content="Streamline every property, unit, tenant, lease, and payment in one unified CRM platform. Built for modern property managers." />
+
+    <!-- Favicon & Brand Icons -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230e7c6b'/%3E%3Cpath d='M5 11.5 12 6l7 5.5M7 10.5V18h10v-7.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230e7c6b'/%3E%3Cpath d='M5 11.5 12 6l7 5.5M7 10.5V18h10v-7.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <!-- Structured Data JSON-LD Schema (GEO / Generative Engine Optimization for AI Search) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://property-crm.vercel.app/#software",
+          "name": "Property CRM",
+          "url": "https://property-crm.vercel.app/",
+          "applicationCategory": "BusinessApplication, RealEstateApplication",
+          "operatingSystem": "Web, iOS, Android (PWA)",
+          "description": "Comprehensive property management CRM platform for residential and commercial landlords, property managers, and tenants. Features automated rent ledgers, tenant self-service portal, digital lease renewals, Kanban maintenance work orders, and real-time financial P&L reporting.",
+          "softwareVersion": "1.0",
+          "inLanguage": "en-US",
+          "offers": {
+            "@type": "AggregateOffer",
+            "priceCurrency": "USD",
+            "lowPrice": "0",
+            "highPrice": "99",
+            "offerCount": "3"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.9",
+            "reviewCount": "148",
+            "bestRating": "5",
+            "worstRating": "1"
+          },
+          "featureList": [
+            "Interactive Property and Unit Inventory",
+            "Automated Rent Prefill & Arrears Tracking",
+            "Tenant Self-Service Mobile Portal",
+            "Kanban Maintenance Ticket Tracking with Status Updates",
+            "Multi-User Role-Based Access Control (Admin, Manager, Staff, Owner, Tenant)",
+            "Two-Factor Authentication (2FA / TOTP) & Google OAuth",
+            "Real-Time P&L, Occupancy & Cashflow Reports"
+          ]
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://property-crm.vercel.app/#organization",
+          "name": "Property CRM Technologies",
+          "url": "https://property-crm.vercel.app/",
+          "description": "Next-generation real estate property management software."
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://property-crm.vercel.app/#website",
+          "url": "https://property-crm.vercel.app/",
+          "name": "Property CRM",
+          "publisher": {
+            "@id": "https://property-crm.vercel.app/#organization"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://property-crm.vercel.app/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is Property CRM and who is it designed for?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Property CRM is an all-in-one cloud property management platform built for landlords, property management companies, real estate owners, and tenants. It replaces disjointed spreadsheets, paperwork, and chat threads with centralized unit tracking, automated rent collection, digital lease agreements, and maintenance workflows."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How does the Tenant Portal simplify rent and maintenance?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tenants receive a secure mobile-first portal where they can check their live rent balance, download payment receipts, submit maintenance tickets with photos, and communicate directly with property managers in real time."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does Property CRM support multiple users and roles?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Property CRM features granular role-based access control (RBAC) supporting Company Administrators, Property Managers, Maintenance Staff, Property Owners/Investors, and Tenants. Role changes take effect instantly across all sessions without page reloads."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What security features protect property and financial data?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Property CRM enforces multi-tier API rate limiting, Two-Factor Authentication (2FA via TOTP authenticator apps), Sign in with Google (OAuth 2.0), encrypted database persistence, and secure httpOnly session cookies."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

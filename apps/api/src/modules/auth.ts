@@ -1,8 +1,12 @@
 import { Body, Controller, Get, HttpCode, Injectable, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Throttle } from '@nestjs/throttler';
 import { TokenType, User } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import type { CookieOptions, Request, Response } from 'express';
+import { OAuth2Client, TokenPayload } from 'google-auth-library';
+import { generateSecret, generateURI, verifySync } from 'otplib';
+import QRCode from 'qrcode';
 import { z } from 'zod';
 import { config } from '../config';
 import { ActivityService } from '../common/activity.service';
@@ -13,6 +17,15 @@ import { permissionsFor } from '../common/permissions';
 import { addDays, randomToken, sha256 } from '../common/util';
 import { parse } from '../common/validation';
 import { PrismaService } from '../prisma.service';
+
+function checkTotp(token: string, secret: string): boolean {
+  try {
+    const res = verifySync({ token: token.trim(), secret: secret.trim() });
+    return Boolean(res?.valid);
+  } catch {
+    return false;
+  }
+}
 
 const MAX_FAILED_LOGINS = 5;
 const LOCK_MINUTES = 15;
@@ -53,10 +66,16 @@ export class AuthService {
       throw invalid;
     }
 
+    if (user.twoFactorEnabled && user.twoFactorSecret) {
+      const tempToken = await this.jwt.signAsync({ sub: user.id, is2FA: true }, { secret: config.jwtAccessSecret, expiresIn: 300 });
+      return { requires2FA: true, tempToken };
+    }
+
     await this.prisma.user.update({ where: { id: user.id }, data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() } });
     await this.activity.log(user, user.companyId, { entityType: 'AUTH', entityId: user.id, action: 'login', summary: `${user.name} signed in` });
-    await this.issueTokens(user.id, res);
-    return this.profile(user.id);
+    const tokens = await this.issueTokens(user.id, res);
+    const profile = await this.profile(user.id);
+    return { ...profile, ...tokens };
   }
 
   async issueTokens(userId: string, res: Response) {
@@ -67,10 +86,15 @@ export class AuthService {
     });
     res.cookie(ACCESS_COOKIE, access, { ...this.cookieBase(), maxAge: config.accessTtlSeconds * 1000 });
     res.cookie(REFRESH_COOKIE, refresh, { ...this.cookieBase(), path: '/api/v1/auth', maxAge: config.refreshTtlDays * 86_400_000 });
+    return { accessToken: access, refreshToken: refresh };
   }
 
-  async refresh(req: Request, res: Response) {
-    const token = req.cookies?.[REFRESH_COOKIE];
+  async signAccessToken(userId: string) {
+    return this.jwt.signAsync({ sub: userId }, { secret: config.jwtAccessSecret, expiresIn: config.accessTtlSeconds });
+  }
+
+  async refresh(req: Request, res: Response, bodyToken?: string) {
+    const token = bodyToken || (req.headers['x-refresh-token'] as string) || req.cookies?.[REFRESH_COOKIE];
     if (!token) throw new UnauthorizedException({ code: 'NOT_SIGNED_IN', message: 'Please sign in.' });
     const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(token) }, include: { user: true } });
     if (!stored || stored.revokedAt || stored.expiresAt < new Date() || stored.user.status !== 'ACTIVE' || stored.user.deletedAt) {
@@ -79,12 +103,12 @@ export class AuthService {
     }
     // Rotate: each refresh token works once.
     await this.prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
-    await this.issueTokens(stored.userId, res);
-    return { ok: true };
+    const tokens = await this.issueTokens(stored.userId, res);
+    return { ok: true, ...tokens };
   }
 
-  async logout(req: Request, res: Response, everywhere = false, userId?: string) {
-    const token = req.cookies?.[REFRESH_COOKIE];
+  async logout(req: Request, res: Response, everywhere = false, userId?: string, bodyToken?: string) {
+    const token = bodyToken || (req.headers['x-refresh-token'] as string) || req.cookies?.[REFRESH_COOKIE];
     if (everywhere && userId) {
       await this.prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
     } else if (token) {
@@ -114,10 +138,109 @@ export class AuthService {
       company: user.company.name,
       permissions: permissionsFor(user.role),
       propertyIds: user.propertyAccess.map((a) => a.propertyId),
+      twoFactorEnabled: user.twoFactorEnabled,
       tenant: user.tenant,
       owner: user.owner,
       teamOwner: user.teamOwner,
     };
+  }
+
+  async login2FA(tempToken: string, code: string, res: Response) {
+    let payload: { sub: string; is2FA?: boolean };
+    try {
+      payload = await this.jwt.verifyAsync(tempToken, { secret: config.jwtAccessSecret });
+    } catch {
+      throw new UnauthorizedException({ code: '2FA_SESSION_EXPIRED', message: 'Verification session expired. Please sign in again.' });
+    }
+    if (!payload.is2FA) throw new UnauthorizedException({ code: 'INVALID_TOKEN', message: 'Invalid 2FA token.' });
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user || user.deletedAt || user.status !== 'ACTIVE' || !user.twoFactorSecret) {
+      throw new UnauthorizedException({ code: 'NOT_SIGNED_IN', message: 'Please sign in again.' });
+    }
+    const isValid = checkTotp(code, user.twoFactorSecret);
+    if (!isValid) {
+      throw new BusinessError('INVALID_2FA_CODE', 'Invalid 6-digit code. Please check your authenticator app and try again.', 400);
+    }
+    await this.prisma.user.update({ where: { id: user.id }, data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() } });
+    await this.activity.log(user, user.companyId, { entityType: 'AUTH', entityId: user.id, action: 'login_2fa', summary: `${user.name} signed in with 2FA` });
+    const tokens = await this.issueTokens(user.id, res);
+    const profile = await this.profile(user.id);
+    return { ...profile, ...tokens };
+  }
+
+  async generate2FA(u: AuthUser) {
+    const secret = generateSecret();
+    const otpauth = generateURI({ issuer: 'Property CRM', label: u.email, secret });
+    const qrCode = await QRCode.toDataURL(otpauth);
+    return { secret, qrCode };
+  }
+
+  async enable2FA(u: AuthUser, secret: string, code: string) {
+    const isValid = checkTotp(code, secret);
+    if (!isValid) {
+      throw new BusinessError('INVALID_2FA_CODE', 'Invalid code. Check your authenticator app and enter the 6-digit code.', 400);
+    }
+    await this.prisma.user.update({ where: { id: u.id }, data: { twoFactorEnabled: true, twoFactorSecret: secret.trim() } });
+    await this.activity.log(u, u.companyId, { entityType: 'AUTH', entityId: u.id, action: 'enable_2fa', summary: `${u.name} enabled two-factor authentication` });
+    return { ok: true };
+  }
+
+  async disable2FA(u: AuthUser, code: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: u.id } });
+    if (!user.twoFactorSecret) return { ok: true };
+    const isValid = checkTotp(code, user.twoFactorSecret);
+    if (!isValid) {
+      throw new BusinessError('INVALID_2FA_CODE', 'Invalid code. Enter the 6-digit code from your authenticator app to confirm disabling 2FA.', 400);
+    }
+    await this.prisma.user.update({ where: { id: u.id }, data: { twoFactorEnabled: false, twoFactorSecret: null } });
+    await this.activity.log(u, u.companyId, { entityType: 'AUTH', entityId: u.id, action: 'disable_2fa', summary: `${u.name} disabled two-factor authentication` });
+    return { ok: true };
+  }
+
+  async googleLogin(credential: string, res: Response) {
+    const client = new OAuth2Client(config.googleClientId || undefined);
+    let payload: TokenPayload | undefined;
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: config.googleClientId ? config.googleClientId : undefined,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      throw new UnauthorizedException({ code: 'INVALID_GOOGLE_TOKEN', message: 'Google sign in verification failed.' });
+    }
+    if (!payload || !payload.email) {
+      throw new UnauthorizedException({ code: 'INVALID_GOOGLE_ACCOUNT', message: 'No email returned from Google.' });
+    }
+    const email = payload.email.toLowerCase().trim();
+    const user = await this.prisma.user.findFirst({
+      where: { OR: [{ googleId: payload.sub }, { email }], deletedAt: null },
+    });
+    if (!user) {
+      throw new BusinessError(
+        'USER_NOT_REGISTERED',
+        `No Property CRM account found for ${email}. Please ask your company administrator for an invite.`,
+        404,
+      );
+    }
+    if (user.status === 'DISABLED') {
+      throw new BusinessError('ACCOUNT_DISABLED', 'This account is disabled. Contact your administrator.', 403);
+    }
+    if (!user.googleId) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { googleId: payload.sub, status: user.status === 'INVITED' ? 'ACTIVE' : user.status },
+      });
+    }
+    if (user.twoFactorEnabled && user.twoFactorSecret) {
+      const tempToken = await this.jwt.signAsync({ sub: user.id, is2FA: true }, { secret: config.jwtAccessSecret, expiresIn: 300 });
+      return { requires2FA: true, tempToken };
+    }
+    await this.prisma.user.update({ where: { id: user.id }, data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() } });
+    await this.activity.log(user, user.companyId, { entityType: 'AUTH', entityId: user.id, action: 'google_login', summary: `${user.name} signed in with Google` });
+    const tokens = await this.issueTokens(user.id, res);
+    const profile = await this.profile(user.id);
+    return { ...profile, ...tokens };
   }
 
   /** Creates a one-time invite/reset token and returns the raw value (only its hash is stored). */
@@ -168,8 +291,9 @@ export class AuthService {
       data: { passwordHash: await bcrypt.hash(password, 12), status: 'ACTIVE', failedLogins: 0, lockedUntil: null },
     });
     await this.activity.log(user, user.companyId, { entityType: 'USER', entityId: user.id, action: 'invite_accepted', summary: `${user.name} accepted the invite` });
-    await this.issueTokens(user.id, res);
-    return this.profile(user.id);
+    const tokens = await this.issueTokens(user.id, res);
+    const profile = await this.profile(user.id);
+    return { ...profile, ...tokens };
   }
 
   async forgot(email: string) {
@@ -219,6 +343,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @Throttle({ short: { limit: 5, ttl: 60000 } })
   @Post('login')
   @HttpCode(200)
   login(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {
@@ -227,17 +352,57 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ short: { limit: 5, ttl: 60000 } })
+  @Post('login-2fa')
+  @HttpCode(200)
+  login2FA(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {
+    const { tempToken, code } = parse(z.object({ tempToken: z.string().min(10), code: z.string().min(6).max(8) }), body);
+    return this.auth.login2FA(tempToken, code, res);
+  }
+
+  @Public()
+  @Throttle({ short: { limit: 10, ttl: 60000 } })
+  @Post('google')
+  @HttpCode(200)
+  googleLogin(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {
+    const { credential } = parse(z.object({ credential: z.string().min(10) }), body);
+    return this.auth.googleLogin(credential, res);
+  }
+
+  @AnyRole()
+  @Get('2fa/setup')
+  setup2FA(@CurrentUser() u: AuthUser) {
+    return this.auth.generate2FA(u);
+  }
+
+  @AnyRole()
+  @Post('2fa/enable')
+  @HttpCode(200)
+  enable2FA(@CurrentUser() u: AuthUser, @Body() body: unknown) {
+    const { secret, code } = parse(z.object({ secret: z.string().min(10), code: z.string().min(6).max(8) }), body);
+    return this.auth.enable2FA(u, secret, code);
+  }
+
+  @AnyRole()
+  @Post('2fa/disable')
+  @HttpCode(200)
+  disable2FA(@CurrentUser() u: AuthUser, @Body() body: unknown) {
+    const { code } = parse(z.object({ code: z.string().min(6).max(8) }), body);
+    return this.auth.disable2FA(u, code);
+  }
+
+  @Public()
   @Post('refresh')
   @HttpCode(200)
-  refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.auth.refresh(req, res);
+  refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body?: { refreshToken?: string }) {
+    return this.auth.refresh(req, res, body?.refreshToken);
   }
 
   @Public()
   @Post('logout')
   @HttpCode(200)
-  logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.auth.logout(req, res);
+  logout(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body?: { refreshToken?: string }) {
+    return this.auth.logout(req, res, false, undefined, body?.refreshToken);
   }
 
   @AnyRole()
@@ -249,8 +414,12 @@ export class AuthController {
 
   @AnyRole()
   @Get('me')
-  me(@CurrentUser() u: AuthUser) {
-    return this.auth.profile(u.id);
+  async me(@CurrentUser() u: AuthUser, @Req() req: Request) {
+    const profile = await this.auth.profile(u.id);
+    const authHeader = req.headers.authorization;
+    const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+    const accessToken = bearer || (await this.auth.signAccessToken(u.id));
+    return { ...profile, accessToken };
   }
 
   @Public()

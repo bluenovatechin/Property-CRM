@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Empty, ErrorNote, Field, InviteLinkModal, Loading, Modal, PageHead, StatusChip, useForm, useToast } from '../components/ui';
 import { api } from '../lib/api';
-import { useAuth } from '../lib/auth';
+import { broadcastAuthSync, useAuth } from '../lib/auth';
 import { ago, initials, ROLE_LABEL } from '../lib/format';
 import { useOwners, useProperties } from '../lib/queries';
 import type { Role } from '../lib/types';
@@ -65,6 +65,7 @@ export function PeoplePage() {
   const toggle = async (p: Person) => {
     try {
       await api.patch(`/users/${p.id}`, { status: p.status === 'DISABLED' ? 'ACTIVE' : 'DISABLED' });
+      broadcastAuthSync({ type: 'USER_ROLE_CHANGED', userId: p.id });
       toast(p.status === 'DISABLED' ? `${p.name} can sign in again` : `${p.name} can no longer sign in`);
       qc.invalidateQueries({ queryKey: ['users'] });
     } catch (e) {
@@ -188,6 +189,7 @@ function PersonForm({ person, canInvite, onClose, onLink }: { person: Person | n
     const scope = isOwner || !team ? {} : x.worksFor === 'owner' ? { teamOwnerId: x.teamOwnerId || null, propertyIds: [] } : { teamOwnerId: null, propertyIds: x.propertyIds };
     if (person) {
       await api.patch(`/users/${person.id}`, { name: x.name, phone: x.phone || null, role: x.role, ...scope });
+      broadcastAuthSync({ type: 'USER_ROLE_CHANGED', userId: person.id, newRole: x.role });
       toast('Saved');
     } else {
       const r = await api.post<Invite>('/users', { name: x.name, email: x.email, phone: x.phone || null, role: x.role, ...scope });

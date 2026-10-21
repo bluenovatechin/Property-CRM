@@ -26,4 +26,5 @@ export const config = {
     pass: process.env.SMTP_PASS || '',
   },
   mailFrom: process.env.MAIL_FROM || 'Property CRM <no-reply@example.com>',
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
 };

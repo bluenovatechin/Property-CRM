@@ -2,6 +2,7 @@ import { Controller, Get, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ActivityService } from './common/activity.service';
 import { AuthGuard, Public } from './common/auth';
 import { MailService } from './common/mail.service';
@@ -36,7 +37,23 @@ class HealthController {
 }
 
 @Module({
-  imports: [PrismaModule, JwtModule.register({}), ScheduleModule.forRoot()],
+  imports: [
+    PrismaModule,
+    JwtModule.register({}),
+    ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([
+      {
+        name: 'short',
+        ttl: 1000,
+        limit: 15,
+      },
+      {
+        name: 'medium',
+        ttl: 60000,
+        limit: 120,
+      },
+    ]),
+  ],
   controllers: [
     HealthController,
     AuthController,
@@ -58,6 +75,7 @@ class HealthController {
     JobsController,
   ],
   providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     ScopeService,
     ActivityService,

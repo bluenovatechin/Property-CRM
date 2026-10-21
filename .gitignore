@@ -23,3 +23,8 @@ Thumbs.db
 
 # Word lock files (a document is open)
 ~$*
+
+# Google Cloud secrets & credentials
+client_secret*.json
+*.secret.json
+

@@ -141,6 +141,9 @@ model User {
   failedLogins   Int                  @default(0)
   lockedUntil    DateTime?
   lastLoginAt    DateTime?
+  twoFactorEnabled Boolean            @default(false)
+  twoFactorSecret  String?
+  googleId         String?            @unique
   ownerId        String?              @unique
   owner          Owner?               @relation(fields: [ownerId], references: [id])
   tenantId       String?              @unique

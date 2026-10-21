@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Notifications } from '../components/Layout';
 import { Empty, ErrorNote, Field, Loading, StatusChip, useForm, useToast } from '../components/ui';
+import { TwoFactorModal } from '../components/TwoFactorModal';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { ago, date, initials, inr, label, periodLabel, modeLabel } from '../lib/format';
@@ -306,6 +307,8 @@ export function PortalProfile() {
 }
 
 function ProfileForm({ data, onSignOut }: { data: PortalMe; onSignOut: () => void }) {
+  const { me } = useAuth();
+  const [show2FA, setShow2FA] = useState(false);
   const qc = useQueryClient();
   const toast = useToast();
   const f = useForm({ altPhone: data.tenant.altPhone ?? '', emergencyName: data.tenant.emergencyName ?? '', emergencyPhone: data.tenant.emergencyPhone ?? '' });
@@ -331,6 +334,18 @@ function ProfileForm({ data, onSignOut }: { data: PortalMe; onSignOut: () => voi
           <span>Email</span>
           <span>{data.tenant.email}</span>
         </div>
+        <div className="kv">
+          <span>Security</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: me?.twoFactorEnabled ? 'var(--success, #0e7c6b)' : undefined }}>
+              {me?.twoFactorEnabled ? '2FA Active' : '2FA Off'}
+            </span>
+            <button type="button" className="btn sm ghost" onClick={() => setShow2FA(true)}>
+              {me?.twoFactorEnabled ? 'Manage 2FA' : 'Enable 2FA'}
+            </button>
+          </div>
+        </div>
+        {show2FA && <TwoFactorModal onClose={() => setShow2FA(false)} />}
         {l && (
           <>
             <div className="kv">
@@ -373,9 +388,14 @@ function ProfileForm({ data, onSignOut }: { data: PortalMe; onSignOut: () => voi
           Save changes
         </button>
       </form>
-      <button className="btn danger" onClick={onSignOut}>
-        <Icon name="logout" /> Sign out
-      </button>
+      <div className="row" style={{ gap: 8, marginTop: 12 }}>
+        <a href="/login?switch=1" target="_blank" rel="noopener noreferrer" className="btn ghost" style={{ flex: 1, justifyContent: 'center' }}>
+          <Icon name="plus" /> Open another user in new tab
+        </a>
+        <button className="btn danger" onClick={onSignOut}>
+          <Icon name="logout" /> Sign out
+        </button>
+      </div>
     </>
   );
 }

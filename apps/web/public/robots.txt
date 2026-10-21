@@ -1,0 +1,11 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /portal
+Allow: /features
+Allow: /pricing
+Allow: /faq
+Disallow: /api/
+
+Sitemap: https://property-crm.vercel.app/sitemap.xml

@@ -10,7 +10,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Role } from '@prisma/client';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { config } from '../config';
 import { PrismaService } from '../prisma.service';
 import { PERMS, Permission } from './permissions';
@@ -63,7 +63,9 @@ export class AuthGuard implements CanActivate {
     if (this.reflector.getAllAndOverride<boolean>('isPublic', targets)) return true;
 
     const req = ctx.switchToHttp().getRequest<Request & { user?: AuthUser }>();
-    const token = req.cookies?.[ACCESS_COOKIE];
+    const authHeader = req.headers.authorization;
+    const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+    const token = bearer || req.cookies?.[ACCESS_COOKIE];
     if (!token) throw new UnauthorizedException({ code: 'NOT_SIGNED_IN', message: 'Please sign in.' });
 
     let payload: { sub: string };
@@ -92,6 +94,12 @@ export class AuthGuard implements CanActivate {
       teamOwnerId: user.teamOwnerId,
       propertyIds: user.propertyAccess.map((a) => a.propertyId),
     };
+
+    const res = ctx.switchToHttp().getResponse<Response>();
+    if (res?.setHeader) {
+      res.setHeader('x-user-role', user.role);
+      res.setHeader('x-user-id', user.id);
+    }
 
     const permission = this.reflector.getAllAndOverride<Permission | undefined>('permission', targets);
     const anyRole = this.reflector.getAllAndOverride<boolean>('anyRole', targets);

@@ -14,7 +14,11 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
   // The web app calls the API on the same origin (Vite proxy in dev, Vercel rewrite in production);
   // CORS is only opened for APP_URL as a fallback.
-  app.enableCors({ origin: config.appUrl, credentials: true });
+  app.enableCors({
+    origin: config.appUrl,
+    credentials: true,
+    exposedHeaders: ['x-user-role', 'x-user-id'],
+  });
   app.enableShutdownHooks();
   await app.listen(config.port);
   Logger.log(`API ready on http://localhost:${config.port}/api/v1`, 'Bootstrap');

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { api, qs } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -38,9 +38,12 @@ function whoAmI(me: { role: string; owner: { name: string } | null; teamOwner: {
   }
 }
 
-export function Layout() {
+import { TwoFactorModal } from './TwoFactorModal';
+
+export function Layout({ children }: { children?: ReactNode } = {}) {
   const { me, can, signOut } = useAuth();
   const [open, setOpen] = useState(false);
+  const [show2FA, setShow2FA] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   useEffect(() => setOpen(false), [location.pathname]);
@@ -89,6 +92,26 @@ export function Layout() {
             <div className="muted small">{ROLE_LABEL[me.role]}</div>
           </div>
           <button
+            type="button"
+            className="btn icon sm ghost"
+            title={me.twoFactorEnabled ? 'Two-Factor Auth: Active' : 'Setup Two-Factor Auth (2FA)'}
+            aria-label="Two-factor authentication"
+            onClick={() => setShow2FA(true)}
+            style={me.twoFactorEnabled ? { color: 'var(--success, #0e7c6b)' } : undefined}
+          >
+            <Icon name="shield" />
+          </button>
+          <a
+            href="/login?switch=1"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn icon sm ghost"
+            title="Open new tab as another user (e.g. Tenant / Owner)"
+            aria-label="Open another user in new tab"
+          >
+            <Icon name="plus" />
+          </a>
+          <button
             className="btn icon sm ghost"
             aria-label="Sign out"
             title="Sign out"
@@ -101,6 +124,7 @@ export function Layout() {
           </button>
         </div>
       </aside>
+      {show2FA && <TwoFactorModal onClose={() => setShow2FA(false)} />}
       {open && <div className="backdrop" style={{ zIndex: 55, padding: 0 }} onClick={() => setOpen(false)} />}
 
       <div className="main">
@@ -114,7 +138,7 @@ export function Layout() {
           </div>
         </header>
         <main className="content">
-          <Outlet />
+          {children ?? <Outlet />}
         </main>
       </div>
     </div>

@@ -13,6 +13,7 @@ export interface Me {
   company: string;
   permissions: string[];
   propertyIds: string[];
+  twoFactorEnabled?: boolean;
   tenant: { id: string; fullName: string } | null;
   owner: { id: string; name: string } | null;
   teamOwner: { id: string; name: string } | null;

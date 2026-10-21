@@ -17,6 +17,23 @@ import { RentPage } from './pages/Rent';
 import { ReportsPage } from './pages/Reports';
 import { TenantDetailPage, TenantsPage } from './pages/Tenants';
 import { UnitDetailPage } from './pages/UnitDetail';
+import { LandingPage } from './pages/LandingPage';
+
+function RootIndex() {
+  const { me, loading } = useAuth();
+  if (loading) return null;
+  if (!me) return <LandingPage />;
+  if (me.role === 'TENANT') return <Navigate to="/portal" replace />;
+  if (me.role === 'STAFF') return <Navigate to="/maintenance" replace />;
+  if (!me.permissions.includes('dashboard:read')) return <Navigate to={homeFor(me)} replace />;
+  return (
+    <RequireAuth area="app">
+      <Layout>
+        <DashboardPage />
+      </Layout>
+    </RequireAuth>
+  );
+}
 
 function Home() {
   const { me } = useAuth();
@@ -31,6 +48,12 @@ function NotFound() {
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<RootIndex />} />
+      <Route path="/landing" element={<LandingPage />} />
+      <Route path="/features" element={<LandingPage />} />
+      <Route path="/pricing" element={<LandingPage />} />
+      <Route path="/faq" element={<LandingPage />} />
+
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/accept-invite" element={<SetPasswordPage mode="invite" />} />
@@ -58,6 +81,7 @@ export default function App() {
         }
       >
         <Route index element={<Home />} />
+        <Route path="dashboard" element={<Home />} />
         <Route path="properties" element={<RequireAuth area="app" permission="properties:read"><PropertiesPage /></RequireAuth>} />
         <Route path="properties/:id" element={<RequireAuth area="app" permission="properties:read"><PropertyDetailPage /></RequireAuth>} />
         <Route path="units/:id" element={<RequireAuth area="app" permission="properties:read"><UnitDetailPage /></RequireAuth>} />
