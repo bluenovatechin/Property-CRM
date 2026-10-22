@@ -11,7 +11,7 @@ import { ago, date, initials, inr, label, periodLabel, modeLabel } from '../lib/
 
 interface PortalMe {
   tenant: { id: string; fullName: string; phone: string; altPhone: string | null; email: string | null; emergencyName: string | null; emergencyPhone: string | null };
-  lease: { unitNo: string; unitType: string; property: string; address: string; startDate: string; endDate: string; daysLeft: number; totalDays: number; monthlyRent: number; securityDeposit: number; dueDay: number } | null;
+  lease: { unitNo: string; unitType: string; property: string; address: string; ownerEmail?: string | null; ownerName?: string | null; startDate: string; endDate: string; daysLeft: number; totalDays: number; monthlyRent: number; securityDeposit: number; dueDay: number } | null;
   latestRent: { period: string; amount: number; status: string; dueDate: string; paidOn: string | null; mode: string | null } | null;
   dues: number;
   lastRequest: { ticketNo: number; title: string; status: string; createdAt: string } | null;
@@ -127,12 +127,21 @@ export function PortalHome() {
           </span>
           Lease details
         </Link>
-        <a href="mailto:">
-          <span className="ico" style={{ background: 'var(--neutral-soft)', color: 'var(--neutral)' }}>
-            <Icon name="mail" />
-          </span>
-          Email manager
-        </a>
+        {lease?.ownerEmail ? (
+          <a href={`mailto:${lease.ownerEmail}?subject=${encodeURIComponent(`Inquiry - Unit ${lease.unitNo}, ${lease.property}`)}`}>
+            <span className="ico" style={{ background: 'var(--neutral-soft)', color: 'var(--neutral)' }}>
+              <Icon name="mail" />
+            </span>
+            Email manager
+          </a>
+        ) : (
+          <Link to="/portal/requests?new=1">
+            <span className="ico" style={{ background: 'var(--neutral-soft)', color: 'var(--neutral)' }}>
+              <Icon name="mail" />
+            </span>
+            Contact manager
+          </Link>
+        )}
       </div>
       <section className="card" style={{ padding: '4px 18px' }}>
         <div className="row between" style={{ padding: '10px 0' }}>

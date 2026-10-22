@@ -145,10 +145,11 @@ interface PickUnit {
 }
 
 const addYear = (iso: string) => {
+  if (!iso || isNaN(Date.parse(iso))) return '';
   const d = new Date(`${iso}T00:00:00Z`);
   d.setUTCFullYear(d.getUTCFullYear() + 1);
   d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
+  return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
 };
 
 /** New lease wizard: unit + tenant → terms → portal access → review & activate. */

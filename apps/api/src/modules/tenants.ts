@@ -101,7 +101,11 @@ export class TenantsService {
       },
     });
     const active = t.leases.find((l) => l.status === 'ACTIVE');
-    const dues = t.rentEntries.filter((r) => r.status !== 'PAID').reduce((s, r) => s + num(r.amount), 0);
+    const duesAgg = await this.prisma.rentEntry.aggregate({
+      where: { tenantId: t.id, status: { not: 'PAID' } },
+      _sum: { amount: true },
+    });
+    const dues = num(duesAgg._sum.amount);
     return {
       id: t.id,
       type: t.type,

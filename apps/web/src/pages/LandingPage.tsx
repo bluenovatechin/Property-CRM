@@ -45,7 +45,7 @@ export function LandingPage() {
             </Link>
 
             {me ? (
-              <Link to="/properties" className="btn primary small" style={{ fontWeight: 700 }}>
+              <Link to="/" className="btn primary small" style={{ fontWeight: 700 }}>
                 Go to Dashboard &rarr;
               </Link>
             ) : (
@@ -78,7 +78,7 @@ export function LandingPage() {
 
         <div className="hero-cta-group">
           {me ? (
-            <Link to="/properties" className="hero-btn-primary">
+            <Link to="/" className="hero-btn-primary">
               <span>Open My Dashboard</span>
               <Icon name="arrow-right" size={18} stroke={2.4} />
             </Link>

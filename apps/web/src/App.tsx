@@ -26,13 +26,7 @@ function RootIndex() {
   if (me.role === 'TENANT') return <Navigate to="/portal" replace />;
   if (me.role === 'STAFF') return <Navigate to="/maintenance" replace />;
   if (!me.permissions.includes('dashboard:read')) return <Navigate to={homeFor(me)} replace />;
-  return (
-    <RequireAuth area="app">
-      <Layout>
-        <DashboardPage />
-      </Layout>
-    </RequireAuth>
-  );
+  return <Navigate to="/dashboard" replace />;
 }
 
 function Home() {

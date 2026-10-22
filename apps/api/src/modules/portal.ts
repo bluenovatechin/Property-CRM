@@ -39,7 +39,20 @@ export class PortalService {
     const tenant = await this.tenantOf(u);
     const lease = await this.prisma.lease.findFirst({
       where: { tenantId: tenant.id, status: 'ACTIVE' },
-      include: { unit: { include: { property: { select: { name: true, addressLine1: true, city: true } } } } },
+      include: {
+        unit: {
+          include: {
+            property: {
+              select: {
+                name: true,
+                addressLine1: true,
+                city: true,
+                owner: { select: { email: true, name: true } },
+              },
+            },
+          },
+        },
+      },
     });
     const entries = await this.prisma.rentEntry.findMany({ where: { tenantId: tenant.id }, orderBy: { period: 'desc' }, take: 1 });
     const dues = await this.prisma.rentEntry.aggregate({ where: { tenantId: tenant.id, status: { in: ['PENDING', 'OVERDUE'] } }, _sum: { amount: true } });
@@ -61,6 +74,8 @@ export class PortalService {
             unitType: lease.unit.unitType,
             property: lease.unit.property.name,
             address: `${lease.unit.property.addressLine1}, ${lease.unit.property.city}`,
+            ownerEmail: lease.unit.property.owner.email,
+            ownerName: lease.unit.property.owner.name,
             startDate: isoDate(lease.startDate),
             endDate: isoDate(lease.endDate),
             daysLeft: daysBetween(today(), lease.endDate),

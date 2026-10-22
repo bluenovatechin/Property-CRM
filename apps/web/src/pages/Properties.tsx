@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { Chip, Empty, ErrorNote, Field, Loading, Modal, PageHead, useForm, useToast } from '../components/ui';
-import { api } from '../lib/api';
+import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { initials, inrShort, label } from '../lib/format';
 import { useOwners, useProperties } from '../lib/queries';
@@ -195,11 +195,21 @@ export function PropertyForm({ property, onClose, defaultOwnerId }: { property: 
   const save = f.submit(async ({ ownerName, ownerPhone, ...v }) => {
     let ownerId = v.ownerId;
     if (newOwner) {
-      const o = await api.post<{ id: string }>('/owners', { name: ownerName, phone: ownerPhone });
-      ownerId = o.id;
-      f.set('ownerId', o.id);
-      setNewOwner(false);
-      qc.invalidateQueries({ queryKey: ['owners'] });
+      try {
+        const o = await api.post<{ id: string }>('/owners', { name: ownerName, phone: ownerPhone });
+        ownerId = o.id;
+        f.set('ownerId', o.id);
+        setNewOwner(false);
+        qc.invalidateQueries({ queryKey: ['owners'] });
+      } catch (err) {
+        if (err instanceof ApiError && err.details) {
+          const remapped: Record<string, string> = {};
+          if (err.details.name) remapped.ownerName = err.details.name;
+          if (err.details.phone) remapped.ownerPhone = err.details.phone;
+          throw new ApiError(err.status, err.code, err.message, remapped);
+        }
+        throw err;
+      }
     }
 
     let code = v.code.trim();
@@ -440,10 +450,10 @@ export function PropertyForm({ property, onClose, defaultOwnerId }: { property: 
               </button>
             </div>
             <div className="form-row">
-              <Field label="Owner name">
+              <Field label="Owner name" error={f.errors.ownerName}>
                 <input {...f.bind('ownerName')} />
               </Field>
-              <Field label="Owner mobile" error={f.errors.phone}>
+              <Field label="Owner mobile" error={f.errors.ownerPhone}>
                 <input {...f.bind('ownerPhone')} inputMode="numeric" />
               </Field>
             </div>

@@ -188,6 +188,7 @@ function TicketPanel({ id }: { id: string }) {
   const assignees = useAssignees(can('maintenance:assign'));
   const { data: t, error } = useQuery({ queryKey: ['ticket', id], queryFn: () => api.get<TicketDetail>(`/maintenance/${id}`) });
   const [comment, setComment] = useState('');
+  const [statusNote, setStatusNote] = useState('');
   const [cost, setCost] = useState('');
   const [busy, setBusy] = useState(false);
   useEffect(() => setCost(t?.actualCost ? String(t.actualCost) : ''), [t?.id, t?.actualCost]);
@@ -212,7 +213,7 @@ function TicketPanel({ id }: { id: string }) {
     }
   };
   const move = (status: TicketStatus) =>
-    run(() => api.post(`/maintenance/${t.id}/status`, { status, comment: comment || undefined, actualCost: status === 'CLOSED' && cost ? cost : undefined }), `Ticket #${t.ticketNo}: ${label(status)}`).then(() => setComment(''));
+    run(() => api.post(`/maintenance/${t.id}/status`, { status, comment: statusNote || undefined, actualCost: status === 'CLOSED' && cost ? cost : undefined }), `Ticket #${t.ticketNo}: ${label(status)}`).then(() => setStatusNote(''));
 
   return (
     <aside className="card card-pad stack" aria-label="Ticket details" style={{ position: 'sticky', top: 90, maxHeight: 'calc(100vh - 110px)', overflowY: 'auto' }}>
@@ -281,7 +282,7 @@ function TicketPanel({ id }: { id: string }) {
               <input type="number" value={cost} onChange={(e) => setCost(e.target.value)} />
             </Field>
           )}
-          <input className="input" placeholder="Add a note with this update (optional)" value={comment} onChange={(e) => setComment(e.target.value)} />
+          <input className="input" placeholder="Add a note with this update (optional)" value={statusNote} onChange={(e) => setStatusNote(e.target.value)} />
           <div className="row" style={{ gap: 8 }}>
             {t.allowedNext.map((s) => (
               <button key={s} className={`btn ${s === 'CANCELLED' || s === 'REOPENED' ? '' : 'primary'}`} style={{ flex: 1 }} disabled={busy} onClick={() => move(s)}>

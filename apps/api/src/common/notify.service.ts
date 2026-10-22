@@ -58,7 +58,11 @@ export class NotifyService {
         companyId,
         deletedAt: null,
         status: 'ACTIVE',
-        OR: [{ role: 'SUPER_ADMIN' }, { role: 'MANAGER', propertyAccess: { some: { propertyId } } }],
+        OR: [
+          { role: 'SUPER_ADMIN' },
+          { role: 'MANAGER' },
+          { role: { in: ['STAFF', 'FINANCE'] }, propertyAccess: { some: { propertyId } } },
+        ],
       },
       select: { id: true },
     });
